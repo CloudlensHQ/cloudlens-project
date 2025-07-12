@@ -5,12 +5,15 @@ import uuid
 import json
 from datetime import datetime
 
-from src.utils.logger import logger
+import logging
 
-from dbschema.db_connector import get_db
-from dbschema.model import CloudScan, ServiceScanResult, AWSCredentials, Organization
-from jobs.aws_cloud_scan import process_scan_request_v2
-from encryption import encryption_service
+logger = logging.getLogger(__name__)
+
+
+from dbschema.db_connector import get_db, get_db_session
+from dbschema.model import CloudScan, ServiceScanResult
+from ..jobs.aws_cloud_scan import process_scan_request_v2
+from src.encryption import encryption_service
 
 
 api = APIRouter(prefix="/api/scan", tags=["AWS Scanning"])
@@ -76,7 +79,7 @@ class ServiceScanResponse(BaseModel):
 async def aws_cloud_scan(
     request: AWSCloudScanRequest,
     background_tasks: BackgroundTasks,
-    db: Any = Depends(get_db)
+    db: Any = Depends(get_db_session)
 ):
     """
     Initiate an AWS cloud security scan with encrypted credentials.
@@ -382,7 +385,7 @@ async def execute_aws_scan(
 @api.post("/service-scan-result", response_model=ServiceScanResponse)
 async def get_service_scan_result(
     request: ServiceScanRequest,
-    db: Any = Depends(get_db)
+    db: Any = Depends(get_db_session)
 ):
     """
     Get service scan result data by scan ID, service name, and optional region.
@@ -485,7 +488,7 @@ async def get_service_scan_result(
 @api.post("/scans", response_model=List[ScanListResponse])
 async def get_scans(
     request: ScanListRequest,
-    db: Any = Depends(get_db)
+    db: Any = Depends(get_db_session)
 ):
     """
     Get a list of scans with filtering by tenant ID.
@@ -547,7 +550,7 @@ async def get_scans(
                 name=scan.name,
                 status=scan.status,
                 cloud_provider=scan.cloud_provider,
-                created_by=scan.created_by,
+                created_by=str(scan.created_by),
                 metadata=scan.cloud_scan_metadata,
                 created_at=scan.created_at.isoformat() if scan.created_at else None,
                 updated_at=scan.updated_at.isoformat() if scan.updated_at else None
@@ -571,7 +574,7 @@ async def get_scans(
         )
 
 @api.get("/scan-status/{scan_id}")
-async def get_scan_status(scan_id: str, db: Any = Depends(get_db)):
+async def get_scan_status(scan_id: str, db: Any = Depends(get_db_session)):
     """
     Get the status of a specific scan.
     
@@ -633,6 +636,86 @@ async def get_scan_status(scan_id: str, db: Any = Depends(get_db)):
         )
 
     
+@api.get("/scan/{scan_id}") 
+async def get_scan(scan_id: str, db: Any = Depends(get_db_session)):
+    """
+    Get a specific scan by ID with associated service scan results.
     
+    Args:
+        scan_id: The unique identifier of the scan
+        db: Database connection
     
-   
+    Returns:
+        Dict containing scan details and service scan results
+    
+    Raises:
+        HTTPException: If scan is not found
+    """
+    logger.info("Scan request received", extra={"scan_id": scan_id})
+
+    try:
+        # Get the main scan record
+        scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
+        
+        if not scan:
+            logger.warning("Scan not found", extra={"scan_id": scan_id})
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Scan not found"
+            )
+        
+        # Get associated service scan results
+        service_scan_results = db.query(ServiceScanResult).filter(
+            ServiceScanResult.scan_id == uuid.UUID(scan_id)
+        ).all()
+        
+        logger.info(
+            "Scan retrieved successfully",
+            extra={
+                "scan_id": scan_id,
+                "status": scan.status,
+                "tenant_id": str(scan.created_by),
+                "cloud_provider": scan.cloud_provider,
+                "service_results_count": len(service_scan_results)
+            }
+        )
+        
+        # Convert service scan results to response format
+        service_results = []
+        for service_result in service_scan_results:
+            service_results.append({
+                "id": str(service_result.id),
+                "service_name": service_result.service_name,
+                "region": service_result.region,
+                "scan_result_metadata": service_result.scan_result_metadata,
+                "service_scan_data": service_result.service_scan_data,
+                "created_at": service_result.created_at.isoformat() if service_result.created_at else None,
+                "updated_at": service_result.updated_at.isoformat() if service_result.updated_at else None,
+                "tenant_id": str(service_result.tenant_id) if service_result.tenant_id else None,
+            })
+        
+        return {
+            "scan_id": str(scan.id),
+            "status": scan.status,
+            "name": scan.name,
+            "cloud_provider": scan.cloud_provider,
+            "created_by": str(scan.created_by),
+            "metadata": scan.cloud_scan_metadata,
+            "created_at": scan.created_at.isoformat() if scan.created_at else None,
+            "updated_at": scan.updated_at.isoformat() if scan.updated_at else None,
+            "service_scan_results": service_results
+        }
+    except HTTPException:   
+        raise
+    except Exception as e:
+        logger.error(
+            "Error retrieving scan",
+            extra={
+                "error": str(e),
+                "scan_id": scan_id
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving scan: {str(e)}"
+        )

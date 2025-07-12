@@ -63,5 +63,15 @@ def get_db(application_name=None):
         logger.info("Database session closed")
 
 
+def get_db_session():
+    """FastAPI dependency to get database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        logger.info("Database session closed")
+
+
 # Remove the global session
 # db = SessionLocal()  # Remove this line

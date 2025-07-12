@@ -4,7 +4,7 @@ from typing import List, Optional
 import logging
 from sqlalchemy.orm import Session
 
-from dbschema.db_connector import get_db
+from dbschema.db_connector import get_db_session
 from dbschema.model import Region
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class RegionResponse(BaseModel):
 @api.get("/", response_model=List[RegionResponse])
 async def get_regions(
     cloud_provider: Optional[str] = Query(None, description="Filter by cloud provider (AWS, GCP, AZURE, etc.)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Get all regions, optionally filtered by cloud provider.
@@ -96,7 +96,7 @@ async def get_regions(
 @api.get("/{cloud_provider}", response_model=List[RegionResponse])
 async def get_regions_by_provider(
     cloud_provider: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Get all regions for a specific cloud provider.
