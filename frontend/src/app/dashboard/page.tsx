@@ -68,7 +68,6 @@ import {
 
 import { DashboardProvider, useDashboard } from "@/context/dashboard-context";
 import { useDashboardData } from "@/hooks/queries/useDashboardData";
-import SidebarLayout from "@/components/sidebar-layout";
 
 // Mock tenant ID for now - in real app this would come from auth
 const MOCK_TENANT_ID = "65556962-a76c-46b7-9a90-b3589c240733";
@@ -749,9 +748,7 @@ function DashboardContent() {
 export default function DashboardPage() {
   return (
     <DashboardProvider initialTenantId={MOCK_TENANT_ID}>
-      <SidebarLayout>
-        <DashboardContent />
-      </SidebarLayout>
+      <DashboardContent />
     </DashboardProvider>
   );
 }
