@@ -8,6 +8,14 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   LayoutDashboard,
   Cloud,
   Settings,
@@ -17,9 +25,11 @@ import {
   Bell,
   Search,
   User,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
@@ -46,15 +56,62 @@ const sidebarItems = [
   },
 ];
 
+// Pages that don't need sidebar
+const noSidebarPages = [
+  "/signin",
+  "/signup",
+  "/onboarding",
+  "/forgot-password",
+  "/reset-password",
+];
+
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
+  const { user, logout, isAuthenticated } = useAuth();
+
+  // Don't show sidebar for auth pages and onboarding
+  const shouldShowSidebar =
+    isAuthenticated && !noSidebarPages.includes(pathname);
+
+  const UserMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon">
+          <User className="h-4 w-4" />
+          <span className="sr-only">User menu</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>
+          {user?.firstName} {user?.lastName}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem>
+          <User className="mr-2 h-4 w-4" />
+          Profile
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          <Settings className="mr-2 h-4 w-4" />
+          Settings
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 font-semibold"
+        >
           <Cloud className="h-6 w-6" />
           {!isCollapsed && <span>CloudLens</span>}
         </Link>
@@ -93,8 +150,28 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         </nav>
       </div>
 
+      {/* User Info */}
+      {!isCollapsed && user && (
+        <div className="mt-auto border-t p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              {user.firstName?.[0]}
+              {user.lastName?.[0]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {user.firstName} {user.lastName}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {user.email}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Collapse Button */}
-      <div className="mt-auto border-t">
+      <div className="border-t">
         <Button
           variant="ghost"
           size="sm"
@@ -113,6 +190,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       </div>
     </div>
   );
+
+  // For pages without sidebar, return just the content
+  if (!shouldShowSidebar) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -174,10 +256,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
             <Bell className="h-4 w-4" />
             <span className="sr-only">Toggle notifications</span>
           </Button>
-          <Button variant="outline" size="icon">
-            <User className="h-4 w-4" />
-            <span className="sr-only">User menu</span>
-          </Button>
+          <UserMenu />
         </header>
 
         {/* Content Area */}

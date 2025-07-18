@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Text, JSON, TIMESTAMP, Boolean
+from sqlalchemy import Column, ForeignKey, Text, JSON, TIMESTAMP, Boolean, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -7,6 +7,25 @@ import uuid
 
 Base = declarative_base()
 
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+    last_login = Column(TIMESTAMP(timezone=True), nullable=True)
+    
+    # Relationship to tenant for organization/team functionality
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenant.id", ondelete="CASCADE"), nullable=True)
+    tenant = relationship("Tenant", back_populates="users")
 
 
 class Tenant(Base):
@@ -20,6 +39,8 @@ class Tenant(Base):
     email = Column(JSON, nullable=True)
     external_id = Column(Text, nullable=True)
     
+    # Relationship to users
+    users = relationship("User", back_populates="tenant")
 
 
 class CloudScan(Base):
