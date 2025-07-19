@@ -1,30 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const FASTAPI_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL || 'http://localhost:9000'
-const TENANT_ID = process.env.TENANT_ID || '65556962-a76c-46b7-9a90-b3589c240733'
+const FASTAPI_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+
+// Helper function to extract tenant ID from JWT token
+function extractTenantFromToken(authHeader: string | null): string | null {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return null;
+    }
+
+    try {
+        const token = authHeader.replace('Bearer ', '');
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.tenant_id || null;
+    } catch (error) {
+        console.error('Error extracting tenant from token:', error);
+        return null;
+    }
+}
 
 export async function POST(request: NextRequest) {
     try {
+        // Extract tenant ID from JWT token
+        const authHeader = request.headers.get('authorization');
+        const tenantId = extractTenantFromToken(authHeader);
+
+        console.log('tenantId', tenantId)
+
+        if (!tenantId) {
+            return NextResponse.json(
+                { error: 'Authentication required or invalid token' },
+                { status: 401 }
+            );
+        }
+
         const body = await request.json()
 
-        // Build request body with tenant_id from environment and other filters
+        // Build request body with authenticated user's tenant_id
         const requestBody = {
-            tenant_id: TENANT_ID,
             limit: body.limit || 50,
             offset: body.offset || 0,
             ...(body.status && { status: body.status }),
             ...(body.cloud_provider && { cloud_provider: body.cloud_provider }),
         }
 
-        // Forward request to FastAPI backend
+        // Forward request to FastAPI backend with authentication
         const response = await fetch(`${FASTAPI_BASE_URL}/api/scan/scans`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Forward any auth headers if needed
-                ...(request.headers.get('authorization') && {
-                    'Authorization': request.headers.get('authorization')!
-                }),
+                'Authorization': authHeader!,
             },
             body: JSON.stringify(requestBody),
         })
@@ -60,30 +84,37 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
     try {
+        // Extract tenant ID from JWT token
+        const authHeader = request.headers.get('authorization');
+        const tenantId = extractTenantFromToken(authHeader);
+
+        if (!tenantId) {
+            return NextResponse.json(
+                { error: 'Authentication required or invalid token' },
+                { status: 401 }
+            );
+        }
+
         const { searchParams } = new URL(request.url)
         const limit = parseInt(searchParams.get('limit') || '50')
         const offset = parseInt(searchParams.get('offset') || '0')
         const status = searchParams.get('status')
         const cloud_provider = searchParams.get('cloud_provider')
 
-        // Build request body for POST request to FastAPI
+        // Build request body for POST request to FastAPI (using authenticated tenant)
         const requestBody = {
-            tenant_id: TENANT_ID,
             limit,
             offset,
             ...(status && { status }),
             ...(cloud_provider && { cloud_provider }),
         }
 
-        // Forward request to FastAPI backend using POST method
+        // Forward request to FastAPI backend with authentication
         const response = await fetch(`${FASTAPI_BASE_URL}/api/scan/scans`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Forward any auth headers if needed
-                ...(request.headers.get('authorization') && {
-                    'Authorization': request.headers.get('authorization')!
-                }),
+                'Authorization': authHeader!,
             },
             body: JSON.stringify(requestBody),
         })

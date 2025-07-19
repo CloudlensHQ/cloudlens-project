@@ -389,7 +389,7 @@ def save_scan_results_to_db(tenant_id, scan_results):
             # Create a new cloud scan record
             cloud_scan = CloudScan(
                 id=uuid.uuid4(),
-                created_by=tenant_id,
+                tenant_id=tenant_id,
                 name="AWS Security Scan",
                 status="COMPLETED",  # Fixed: Now using uppercase for enum value
                 cloud_provider="AWS",  # Fixed: Use uppercase for the cloud_provider enum

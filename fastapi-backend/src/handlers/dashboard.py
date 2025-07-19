@@ -61,7 +61,7 @@ async def get_dashboard_metrics(
         
         # Get scans for the tenant
         scans_query = db.query(CloudScan).filter(
-            CloudScan.created_by == request.tenant_id
+            CloudScan.tenant_id == request.tenant_id
         )
         
         if request.scan_id:

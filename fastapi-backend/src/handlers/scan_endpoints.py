@@ -43,7 +43,7 @@ class ScanListResponse(BaseModel):
     name: Optional[str]
     status: Optional[str]
     cloud_provider: Optional[str]
-    created_by: Optional[str]
+    tenant_id: Optional[str]
     metadata: Optional[Dict[str, Any]]
     created_at: Optional[str]
     updated_at: Optional[str]
@@ -170,20 +170,20 @@ async def aws_cloud_scan(
                 detail="AWS access key and secret key are required"
             )
         
-        # Create initial scan record in database
-        logger.info("Creating scan record in database", extra={"scan_id": scan_id})
+        # Create CloudScan record
+        logger.info("Creating cloud scan record", extra={"scan_id": scan_id})
         
         try:
             cloud_scan = CloudScan(
                 id=uuid.UUID(scan_id),
-                created_by=context.tenant_id,
+                tenant_id=context.tenant_id,  # Use tenant_id instead of created_by
                 name="AWS Security Scan",
                 status="RUNNING",
                 cloud_provider="AWS",
                 cloud_scan_metadata={
-                    "scan_options": request.scan_options,
                     "excluded_regions": request.excluded_regions or [],
-                    "start_timestamp": datetime.now().isoformat()
+                    "scan_options": request.scan_options,
+                    "initiated_by": str(context.user_id)
                 }
             )
             db.add(cloud_scan)
@@ -527,7 +527,7 @@ async def get_scans(
         )
         
         # Build query - automatically scoped to the authenticated tenant
-        query = db.query(CloudScan).filter(CloudScan.created_by == context.tenant_id)
+        query = db.query(CloudScan).filter(CloudScan.tenant_id == context.tenant_id)
         
         # Apply optional filters
         if request.status:
@@ -561,7 +561,7 @@ async def get_scans(
                 name=scan.name,
                 status=scan.status,
                 cloud_provider=scan.cloud_provider,
-                created_by=str(scan.created_by),
+                tenant_id=str(scan.tenant_id),
                 metadata=scan.cloud_scan_metadata,
                 created_at=scan.created_at.isoformat() if scan.created_at else None,
                 updated_at=scan.updated_at.isoformat() if scan.updated_at else None
@@ -616,7 +616,7 @@ async def get_scan_status(scan_id: str, db: Any = Depends(get_db_session)):
             extra={
                 "scan_id": scan_id,
                 "status": scan.status,
-                "tenant_id": scan.created_by,
+                "tenant_id": scan.tenant_id,
                 "cloud_provider": scan.cloud_provider
             }
         )
@@ -626,7 +626,7 @@ async def get_scan_status(scan_id: str, db: Any = Depends(get_db_session)):
             "status": scan.status,
             "name": scan.name,
             "cloud_provider": scan.cloud_provider,
-            "created_by": scan.created_by,
+            "tenant_id": str(scan.tenant_id),
             "metadata": scan.cloud_scan_metadata,
             "created_at": scan.created_at.isoformat() if scan.created_at else None
         }
@@ -685,7 +685,7 @@ async def get_scan(scan_id: str, db: Any = Depends(get_db_session)):
             extra={
                 "scan_id": scan_id,
                 "status": scan.status,
-                "tenant_id": str(scan.created_by),
+                "tenant_id": str(scan.tenant_id),
                 "cloud_provider": scan.cloud_provider,
                 "service_results_count": len(service_scan_results)
             }
@@ -710,7 +710,7 @@ async def get_scan(scan_id: str, db: Any = Depends(get_db_session)):
             "status": scan.status,
             "name": scan.name,
             "cloud_provider": scan.cloud_provider,
-            "created_by": str(scan.created_by),
+            "tenant_id": str(scan.tenant_id),
             "metadata": scan.cloud_scan_metadata,
             "created_at": scan.created_at.isoformat() if scan.created_at else None,
             "updated_at": scan.updated_at.isoformat() if scan.updated_at else None,
