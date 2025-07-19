@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
-from ..dbschema.db_connector import get_db
-from ..dbschema.model import User
-from ..schemas.auth import (
+from dbschema.db_connector import get_db_session
+from dbschema.model import User
+from src.schemas.auth import (
     UserSignUpRequest,
     UserSignInRequest,
     UserResponse,
@@ -33,7 +33,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/signup", response_model=AuthResponse)
 async def signup(
     signup_data: UserSignUpRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Register a new user
@@ -92,7 +92,7 @@ async def signup(
 @router.post("/signin", response_model=AuthResponse)
 async def signin(
     signin_data: UserSignInRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Sign in a user
@@ -151,7 +151,7 @@ async def signin(
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
     refresh_data: RefreshTokenRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Refresh access token using refresh token
@@ -222,7 +222,7 @@ async def logout(
 async def change_password(
     password_data: PasswordChangeRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Change user password
@@ -252,7 +252,7 @@ async def change_password(
 async def complete_onboarding(
     onboarding_data: OnboardingRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Complete user onboarding

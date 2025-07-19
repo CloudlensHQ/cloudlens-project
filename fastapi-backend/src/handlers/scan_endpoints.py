@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-from dbschema.db_connector import get_db, get_db_session
+from dbschema.db_connector import get_db_session
 from dbschema.model import CloudScan, ServiceScanResult
 from ..jobs.aws_cloud_scan import process_scan_request_v2
 from src.encryption import encryption_service

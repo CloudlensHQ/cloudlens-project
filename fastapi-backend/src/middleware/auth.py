@@ -2,9 +2,9 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional
-from ..dbschema.db_connector import get_db
-from ..dbschema.model import User
-from ..utils import verify_token
+from dbschema.db_connector import get_db_session
+from dbschema.model import User
+from src.utils import verify_token
 
 
 security = HTTPBearer()
@@ -17,7 +17,7 @@ class AuthMiddleware:
     async def __call__(
         self,
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db_session)
     ) -> Optional[User]:
         """
         Authenticate user based on JWT token
@@ -100,7 +100,7 @@ def get_current_verified_user(user: User = Depends(get_current_active_user)) -> 
 
 def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ) -> Optional[User]:
     """
     Optional authentication - returns user if valid token provided, None otherwise

@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 30
     jwt_refresh_token_expire_days: int = 30
 
+    # API settings
+    environment: str = "development"
+    api_host: str = "0.0.0.0"
+    api_port: int = 9000
+    api_debug: bool = True
+    cors_origins: str = "http://localhost:3000"
+    log_level: str = "DEBUG"
+
     model_config = SettingsConfigDict(
         env_file=(".env")
     )
