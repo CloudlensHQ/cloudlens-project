@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
 from dbschema.db_connector import get_db_session
-from dbschema.model import User
+from dbschema.model import User, Tenant
 from src.schemas.auth import (
     UserSignUpRequest,
     UserSignInRequest,
@@ -16,15 +16,15 @@ from src.schemas.auth import (
     RefreshTokenRequest,
     MessageResponse
 )
-from ..middleware.auth import get_current_user, get_current_active_user
-from ..utils import (
+from src.middleware.auth import get_current_user, get_current_active_user, get_current_context
+from src.utils import (
     hash_password,
     verify_password,
     create_access_token,
     create_refresh_token,
     verify_token
 )
-from ..config import settings
+from src.config import settings
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -36,7 +36,7 @@ async def signup(
     db: Session = Depends(get_db_session)
 ):
     """
-    Register a new user
+    Register a new user with tenant creation
     """
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == signup_data.email).first()
@@ -49,7 +49,21 @@ async def signup(
     # Hash password
     password_hash = hash_password(signup_data.password)
     
-    # Create new user
+    # Create a new tenant for the user (or you could implement logic to assign to existing tenant)
+    new_tenant = Tenant(
+        name={"company": f"{signup_data.first_name} {signup_data.last_name}'s Organization"},
+        email={"primary": signup_data.email},
+        tenant_metadata={
+            "created_by": signup_data.email,
+            "plan": "free",
+            "features": ["basic_scanning", "dashboard"]
+        }
+    )
+    
+    db.add(new_tenant)
+    db.flush()  # Flush to get the tenant ID
+    
+    # Create new user with tenant assignment
     new_user = User(
         email=signup_data.email,
         password_hash=password_hash,
@@ -57,20 +71,32 @@ async def signup(
         last_name=signup_data.last_name,
         is_active=True,
         is_verified=False,
-        onboarding_completed=False
+        onboarding_completed=False,
+        tenant_id=new_tenant.id  # Assign the user to the created tenant
     )
     
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    db.refresh(new_tenant)
     
-    # Create tokens
+    # Create tokens with tenant information
     access_token_expires = timedelta(minutes=settings.jwt_access_token_expire_minutes)
     access_token = create_access_token(
-        data={"sub": str(new_user.id)}, 
+        data={
+            "sub": str(new_user.id), 
+            "tenant_id": str(new_tenant.id),
+            "email": new_user.email
+        }, 
         expires_delta=access_token_expires
     )
-    refresh_token = create_refresh_token(data={"sub": str(new_user.id)})
+    refresh_token = create_refresh_token(
+        data={
+            "sub": str(new_user.id),
+            "tenant_id": str(new_tenant.id),
+            "email": new_user.email
+        }
+    )
     
     # Create response
     user_response = UserResponse.from_orm(new_user)
@@ -84,7 +110,7 @@ async def signup(
     
     return AuthResponse(
         success=True,
-        message="User created successfully",
+        message="User created successfully with organization setup",
         data=token_response
     )
 
@@ -95,7 +121,7 @@ async def signin(
     db: Session = Depends(get_db_session)
 ):
     """
-    Sign in a user
+    Sign in a user with tenant information
     """
     # Find user by email
     user = db.query(User).filter(User.email == signin_data.email).first()
@@ -119,17 +145,34 @@ async def signin(
             detail="Account is inactive"
         )
     
+    # Check if user has a tenant
+    if not user.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is not properly configured. Please contact support."
+        )
+    
     # Update last login
     user.last_login = datetime.utcnow()
     db.commit()
     
-    # Create tokens
+    # Create tokens with tenant information
     access_token_expires = timedelta(minutes=settings.jwt_access_token_expire_minutes)
     access_token = create_access_token(
-        data={"sub": str(user.id)}, 
+        data={
+            "sub": str(user.id), 
+            "tenant_id": str(user.tenant_id),
+            "email": user.email
+        }, 
         expires_delta=access_token_expires
     )
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(
+        data={
+            "sub": str(user.id),
+            "tenant_id": str(user.tenant_id), 
+            "email": user.email
+        }
+    )
     
     # Create response
     user_response = UserResponse.from_orm(user)
@@ -166,6 +209,8 @@ async def refresh_token(
     
     # Get user
     user_id = payload.get("sub")
+    tenant_id = payload.get("tenant_id")
+    
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.is_active:
         raise HTTPException(
@@ -173,13 +218,30 @@ async def refresh_token(
             detail="User not found or inactive"
         )
     
+    # Verify tenant still exists and matches
+    if not user.tenant_id or str(user.tenant_id) != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid tenant association"
+        )
+    
     # Create new tokens
     access_token_expires = timedelta(minutes=settings.jwt_access_token_expire_minutes)
     access_token = create_access_token(
-        data={"sub": str(user.id)}, 
+        data={
+            "sub": str(user.id), 
+            "tenant_id": str(user.tenant_id),
+            "email": user.email
+        }, 
         expires_delta=access_token_expires
     )
-    new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    new_refresh_token = create_refresh_token(
+        data={
+            "sub": str(user.id),
+            "tenant_id": str(user.tenant_id),
+            "email": user.email
+        }
+    )
     
     # Create response
     user_response = UserResponse.from_orm(user)

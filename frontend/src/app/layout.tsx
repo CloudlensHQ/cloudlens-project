@@ -38,10 +38,10 @@ export default function RootLayout({
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <RouteProtection>
-              <RegionsProvider>
-                <RegionsInitializer />
-                <SidebarLayout>{children}</SidebarLayout>
-              </RegionsProvider>
+          <RegionsProvider>
+            <RegionsInitializer />
+            <SidebarLayout>{children}</SidebarLayout>
+          </RegionsProvider>
             </RouteProtection>
           </AuthProvider>
         </QueryClientProvider>

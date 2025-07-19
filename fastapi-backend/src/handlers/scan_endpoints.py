@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import uuid
 import json
 from datetime import datetime
@@ -11,10 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 from dbschema.db_connector import get_db_session
-from dbschema.model import CloudScan, ServiceScanResult
-from ..jobs.aws_cloud_scan import process_scan_request_v2
-from src.encryption import encryption_service
+from dbschema.model import CloudScan, ServiceScanResult, User, Tenant
+from src.middleware.auth import get_tenant_scoped_context, get_current_context, TenantContext
+from src.jobs.aws_cloud_scan import process_scan_request_v2
+from src.encryption import EncryptionService
 
+# Initialize encryption service
+encryption_service = EncryptionService()
 
 api = APIRouter(prefix="/api/scan", tags=["AWS Scanning"])
 
@@ -23,7 +26,6 @@ class AWSCloudScanRequest(BaseModel):
     encrypted_aws_access_key: str
     encrypted_aws_secret_key: str
     encrypted_aws_session_token: Optional[str] = None
-    tenant_id: str
     excluded_regions: Optional[List[str]] = None
     scan_options: Optional[int] = 840
 
@@ -33,6 +35,7 @@ class ScanResponse(BaseModel):
     message: str
     status: str
     timestamp: str
+    tenant_id: str
 
 class ScanListResponse(BaseModel):
     """Scan list response model"""
@@ -49,7 +52,6 @@ class ScanListResponse(BaseModel):
         from_attributes = True
 
 class ScanListRequest(BaseModel):
-    tenant_id: str  # Required field
     status: Optional[str] = None
     cloud_provider: Optional[str] = None
     limit: Optional[int] = 50
@@ -79,17 +81,20 @@ class ServiceScanResponse(BaseModel):
 async def aws_cloud_scan(
     request: AWSCloudScanRequest,
     background_tasks: BackgroundTasks,
+    context: TenantContext = Depends(get_current_context),
     db: Any = Depends(get_db_session)
 ):
     """
     Initiate an AWS cloud security scan with encrypted credentials.
     
     This endpoint accepts encrypted AWS credentials and initiates a comprehensive
-    security scan across the specified AWS account.
+    security scan across the specified AWS account. The scan is automatically
+    scoped to the authenticated user's tenant.
     
     Args:
         request: The scan request containing encrypted AWS credentials and configuration
         background_tasks: FastAPI background tasks for async processing
+        context: Authenticated user and tenant context
         db: Database connection
     
     Returns:
@@ -106,7 +111,8 @@ async def aws_cloud_scan(
         "AWS scan request received",
         extra={
             "scan_id": scan_id,
-            "tenant_id": request.tenant_id,
+            "tenant_id": str(context.tenant_id),
+            "user_id": str(context.user_id),
             "excluded_regions_count": len(request.excluded_regions or []),
             "scan_options": request.scan_options,
             "has_session_token": bool(request.encrypted_aws_session_token)
@@ -118,11 +124,12 @@ async def aws_cloud_scan(
         logger.info("Starting credential decryption", extra={"scan_id": scan_id})
         
         try:
-            aws_access_key, aws_secret_key, aws_session_token = encryption_service.decrypt_aws_credentials(
-                request.encrypted_aws_access_key,
-                request.encrypted_aws_secret_key,
-                request.encrypted_aws_session_token
-            )
+            aws_access_key = encryption_service.decrypt(request.encrypted_aws_access_key)
+            aws_secret_key = encryption_service.decrypt(request.encrypted_aws_secret_key)
+            aws_session_token = None
+            
+            if request.encrypted_aws_session_token:
+                aws_session_token = encryption_service.decrypt(request.encrypted_aws_session_token)
             
             logger.info(
                 "Credentials decrypted successfully", 
@@ -140,7 +147,7 @@ async def aws_cloud_scan(
                 extra={
                     "scan_id": scan_id,
                     "error": str(e),
-                    "tenant_id": request.tenant_id
+                    "tenant_id": str(context.tenant_id)
                 }
             )
             raise HTTPException(
@@ -169,7 +176,7 @@ async def aws_cloud_scan(
         try:
             cloud_scan = CloudScan(
                 id=uuid.UUID(scan_id),
-                created_by=request.tenant_id,
+                created_by=context.tenant_id,
                 name="AWS Security Scan",
                 status="RUNNING",
                 cloud_provider="AWS",
@@ -186,7 +193,7 @@ async def aws_cloud_scan(
                 "Scan record created successfully",
                 extra={
                     "scan_id": scan_id,
-                    "tenant_id": request.tenant_id,
+                    "tenant_id": str(context.tenant_id),
                     "cloud_provider": "AWS"
                 }
             )
@@ -197,7 +204,7 @@ async def aws_cloud_scan(
                 extra={
                     "scan_id": scan_id,
                     "error": str(e),
-                    "tenant_id": request.tenant_id
+                    "tenant_id": str(context.tenant_id)
                 }
             )
             raise HTTPException(
@@ -214,7 +221,7 @@ async def aws_cloud_scan(
             aws_access_key,
             aws_secret_key,
             aws_session_token,
-            request.tenant_id,
+            context.tenant_id,
             request.excluded_regions or [],
             request.scan_options
         )
@@ -223,7 +230,7 @@ async def aws_cloud_scan(
             "AWS scan initiated successfully",
             extra={
                 "scan_id": scan_id,
-                "tenant_id": request.tenant_id,
+                "tenant_id": str(context.tenant_id),
                 "status": "RUNNING"
             }
         )
@@ -232,7 +239,8 @@ async def aws_cloud_scan(
             scan_id=scan_id,
             message="AWS cloud scan initiated successfully",
             status="RUNNING",
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
+            tenant_id=str(context.tenant_id)
         )
         
     except HTTPException:
@@ -243,7 +251,7 @@ async def aws_cloud_scan(
             extra={
                 "scan_id": scan_id,
                 "error": str(e),
-                "tenant_id": request.tenant_id
+                "tenant_id": str(context.tenant_id)
             }
         )
         raise HTTPException(
@@ -488,17 +496,19 @@ async def get_service_scan_result(
 @api.post("/scans", response_model=List[ScanListResponse])
 async def get_scans(
     request: ScanListRequest,
+    context: TenantContext = Depends(get_current_context),
     db: Any = Depends(get_db_session)
 ):
     """
-    Get a list of scans with filtering by tenant ID.
+    Get a list of scans for the authenticated tenant.
     
     Args:
-        request: ScanListRequest containing tenant_id and optional filters
+        request: ScanListRequest containing optional filters
+        context: Authenticated user and tenant context
         db: Database connection
     
     Returns:
-        List[ScanListResponse]: List of scans matching the criteria
+        List[ScanListResponse]: List of scans scoped to the authenticated tenant
     
     Raises:
         HTTPException: If there's an error retrieving scans
@@ -507,7 +517,8 @@ async def get_scans(
         logger.info(
             "Scans list request received",
             extra={
-                "tenant_id": request.tenant_id,
+                "tenant_id": str(context.tenant_id),
+                "user_id": str(context.user_id),
                 "status": request.status,
                 "cloud_provider": request.cloud_provider,
                 "limit": request.limit,
@@ -515,8 +526,8 @@ async def get_scans(
             }
         )
         
-        # Build query - always filter by tenant_id since it's required
-        query = db.query(CloudScan).filter(CloudScan.created_by == request.tenant_id)
+        # Build query - automatically scoped to the authenticated tenant
+        query = db.query(CloudScan).filter(CloudScan.created_by == context.tenant_id)
         
         # Apply optional filters
         if request.status:
@@ -536,7 +547,7 @@ async def get_scans(
             "Scans retrieved successfully",
             extra={
                 "scans_count": len(scans),
-                "tenant_id": request.tenant_id,
+                "tenant_id": str(context.tenant_id),
                 "status": request.status,
                 "cloud_provider": request.cloud_provider
             }

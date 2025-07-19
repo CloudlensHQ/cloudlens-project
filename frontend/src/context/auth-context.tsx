@@ -21,6 +21,7 @@ interface User {
   createdAt: string;
   updatedAt: string;
   lastLogin?: string;
+  tenantId?: string;
 }
 
 interface AuthTokens {
@@ -49,10 +50,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Local storage keys
+// Storage keys
 const ACCESS_TOKEN_KEY = "cloudlens_access_token";
 const REFRESH_TOKEN_KEY = "cloudlens_refresh_token";
 const USER_KEY = "cloudlens_user";
+
+// Cookie helpers
+const setCookie = (name: string, value: string, days: number = 30) => {
+  if (typeof document === "undefined") return;
+
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+
+  document.cookie = `${name}=${value}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+};
+
+const deleteCookie = (name: string) => {
+  if (typeof document === "undefined") return;
+
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -60,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from localStorage and cookies
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -77,6 +94,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             tokenType: "bearer",
             expiresIn: 1800, // 30 minutes default
           });
+
+          // Set cookies for middleware
+          setCookie(ACCESS_TOKEN_KEY, accessToken, 0.02); // 30 minutes
+          setCookie(REFRESH_TOKEN_KEY, refreshToken, 30); // 30 days
+          setCookie(USER_KEY, JSON.stringify(parsedUser), 30);
 
           // Verify token is still valid
           await verifyCurrentUser(accessToken);
@@ -108,28 +130,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = await response.json();
       setUser(userData);
       localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      setCookie(USER_KEY, JSON.stringify(userData), 30);
     } catch (error) {
       console.error("User verification error:", error);
       clearAuthData();
     }
   };
 
-  // Clear auth data
+  // Clear auth data from both localStorage and cookies
   const clearAuthData = () => {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+
+    deleteCookie(ACCESS_TOKEN_KEY);
+    deleteCookie(REFRESH_TOKEN_KEY);
+    deleteCookie(USER_KEY);
+
     setUser(null);
     setTokens(null);
   };
 
-  // Store auth data
+  // Store auth data in both localStorage and cookies
   const storeAuthData = (authData: any) => {
     const { access_token, refresh_token, user: userData } = authData;
 
+    // Store in localStorage
     localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
     localStorage.setItem(USER_KEY, JSON.stringify(userData));
+
+    // Store in cookies for middleware
+    setCookie(ACCESS_TOKEN_KEY, access_token, 0.02); // 30 minutes
+    setCookie(REFRESH_TOKEN_KEY, refresh_token, 30); // 30 days
+    setCookie(USER_KEY, JSON.stringify(userData), 30);
 
     setUser(userData);
     setTokens({
@@ -162,7 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         storeAuthData(authData.data);
 
         // Redirect based on onboarding status
-        if (!authData.data.user.onboardingCompleted) {
+        if (!authData.data.user.onboarding_completed) {
           router.push("/onboarding");
         } else {
           router.push("/dashboard");
@@ -280,6 +314,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const updatedUser = { ...user, onboardingCompleted: true };
         setUser(updatedUser);
         localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+        setCookie(USER_KEY, JSON.stringify(updatedUser), 30);
       }
 
       router.push("/dashboard");
