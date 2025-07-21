@@ -16,7 +16,7 @@ class TenantContext:
         self.user = user
         self.tenant = tenant
         self.user_id = user.id
-        self.tenant_id = tenant.id
+        self.tenant_id = tenant.id if tenant else None
 
 
 class AuthMiddleware:
@@ -45,15 +45,19 @@ class AuthMiddleware:
         # Verify the token
         payload = verify_token(credentials.credentials)
         if not payload:
+            print(f"Token verification failed for token: {credentials.credentials[:20]}...")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token",
+                detail="Invalid or expired token. Please sign in again.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+        print('payload', payload)
         
         # Get user from database
         user_id = payload.get("sub")
         tenant_id = payload.get("tenant_id")
+        
         
         if not user_id:
             raise HTTPException(
@@ -99,6 +103,7 @@ def get_current_context(context: TenantContext = Depends(AuthMiddleware(require_
     """
     Dependency to get current authenticated user with tenant context
     """
+    print('context', context)
     return context
 
 

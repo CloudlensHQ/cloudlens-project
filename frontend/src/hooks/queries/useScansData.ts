@@ -23,11 +23,20 @@ export interface ScanFilters {
 }
 
 const fetchScans = async (filters: ScanFilters = {}): Promise<Scan[]> => {
+    // Get access token from localStorage for authorization
+    const accessToken = localStorage.getItem('cloudlens_access_token');
+
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+
+    if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
     const response = await fetch('/api/scans', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(filters),
     })
 

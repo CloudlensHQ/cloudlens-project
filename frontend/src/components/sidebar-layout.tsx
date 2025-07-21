@@ -48,12 +48,6 @@ const sidebarItems = [
     icon: Cloud,
     badge: null,
   },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-    badge: null,
-  },
 ];
 
 // Pages that don't need sidebar
@@ -105,7 +99,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   );
 
   const SidebarContent = () => (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Logo */}
       <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
         <Link
@@ -118,7 +112,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       </div>
 
       {/* Navigation */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4 mt-4">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
@@ -151,22 +145,64 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       </div>
 
       {/* User Info */}
-      {!isCollapsed && user && (
+      {user && (
         <div className="mt-auto border-t p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              {user.firstName?.[0]}
-              {user.lastName?.[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              {isCollapsed ? (
+                <div className="flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded-lg p-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    {user.firstName?.[0]}
+                    {user.lastName?.[0]}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    {user.firstName?.[0]}
+                    {user.lastName?.[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align={isCollapsed ? "center" : "start"}
+              className="w-56"
+            >
+              <DropdownMenuLabel>
                 {user.firstName} {user.lastName}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {user.email}
-              </p>
-            </div>
-          </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center w-full">
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="flex items-center w-full">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={logout}
+                className="text-red-600 focus:text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 
@@ -197,11 +233,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   }
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+    <div className="grid h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr] overflow-hidden">
       {/* Desktop Sidebar */}
       <div
         className={cn(
-          "hidden border-r bg-muted/40 md:block transition-all duration-300",
+          "hidden border-r bg-muted/40 md:block transition-all duration-300 h-screen overflow-hidden",
           isCollapsed ? "md:w-[70px] lg:w-[70px]" : "md:w-[220px] lg:w-[280px]"
         )}
       >
@@ -237,7 +273,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col">
+      <div className="flex flex-col h-screen overflow-hidden">
         {/* Desktop Header */}
         <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 hidden md:flex">
           <div className="w-full flex-1">
@@ -260,7 +296,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 min-h-0">
           <ScrollArea className="h-full">
             <div className="p-4 lg:p-6">{children}</div>
           </ScrollArea>

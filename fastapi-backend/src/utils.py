@@ -52,12 +52,56 @@ def create_refresh_token(data: dict) -> str:
 def verify_token(token: str) -> Optional[dict]:
     """Verify and decode a JWT token"""
     try:
+        print(f"JWT Secret being used: {settings.jwt_secret[:10]}...") # Only print first 10 chars for security
+        print(f"JWT Algorithm: {settings.jwt_algorithm}")
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         return payload
+    except jwt.ExpiredSignatureError as e:
+        print(f"Token expired: {e}")
+        return None
+    except jwt.InvalidTokenError as e:
+        print(f"Invalid token error: {e}")
+        return None
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Token verification error: {e}")
+        return None
+
+def generate_reset_token(user_id: str) -> str:
+    """Generate a password reset token"""
+    expire = datetime.utcnow() + timedelta(hours=settings.password_reset_token_expire_hours)
+    to_encode = {
+        "sub": user_id,
+        "exp": expire,
+        "type": "password_reset"
+    }
+    encoded_jwt = jwt.encode(
+        to_encode, 
+        settings.jwt_secret, 
+        algorithm=settings.jwt_algorithm
+    )
+    return encoded_jwt
+
+
+def verify_reset_token(token: str) -> Optional[str]:
+    """Verify a password reset token and return user_id if valid"""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm]
+        )
+        
+        if payload.get("type") != "password_reset":
+            return None
+            
+        user_id = payload.get("sub")
+        return user_id
     except jwt.ExpiredSignatureError:
         return None
     except jwt.JWTError:
         return None
+
 
 def generate_encryption_key():
     """Generate a new encryption key for AWS credentials"""

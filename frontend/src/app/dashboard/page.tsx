@@ -68,9 +68,10 @@ import {
 
 import { DashboardProvider, useDashboard } from "@/context/dashboard-context";
 import { useDashboardData } from "@/hooks/queries/useDashboardData";
+import { useAuth } from "@/context/auth-context";
 
 // Mock tenant ID for now - in real app this would come from auth
-const MOCK_TENANT_ID = "65556962-a76c-46b7-9a90-b3589c240733";
+// const MOCK_TENANT_ID = "65556962-a76c-46b7-9a90-b3589c240733";
 
 // Color schemes for charts
 const COLORS = {
@@ -746,8 +747,22 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  
+  // Don't render if user is not authenticated or doesn't have tenant ID
+  if (!user?.tenantId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-lg font-medium text-gray-900">Loading...</div>
+          <div className="text-sm text-gray-500">Initializing dashboard</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <DashboardProvider initialTenantId={MOCK_TENANT_ID}>
+    <DashboardProvider initialTenantId={user.tenantId}>
       <DashboardContent />
     </DashboardProvider>
   );

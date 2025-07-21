@@ -86,12 +86,21 @@ export function useDashboardMetrics(filters: DashboardRequest, options?: {
         queryKey: QUERY_KEYS.DASHBOARD.METRICS(filters),
         queryFn: async (): Promise<DashboardMetricsResponse> => {
             try {
+                // Get access token from localStorage for authorization
+                const accessToken = localStorage.getItem('cloudlens_access_token');
+
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                };
+
+                if (accessToken) {
+                    headers['Authorization'] = `Bearer ${accessToken}`;
+                }
+
                 // Make API call to dashboard metrics endpoint via Next.js API
                 const response = await fetch('/api/dashboard/metrics', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers,
                     body: JSON.stringify(filters),
                 })
 
@@ -136,11 +145,20 @@ export function useDashboardData(filters: DashboardRequest, options?: {
         queryClient.prefetchQuery({
             queryKey: QUERY_KEYS.DASHBOARD.METRICS(newFilters),
             queryFn: async () => {
+                // Get access token from localStorage for authorization
+                const accessToken = localStorage.getItem('cloudlens_access_token');
+
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                };
+
+                if (accessToken) {
+                    headers['Authorization'] = `Bearer ${accessToken}`;
+                }
+
                 const response = await fetch('/api/dashboard/metrics', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers,
                     body: JSON.stringify(newFilters),
                 })
 
@@ -205,11 +223,20 @@ export function useDashboardAlerts(filters: DashboardRequest) {
     return useQuery({
         queryKey: QUERY_KEYS.DASHBOARD.ALERTS(filters),
         queryFn: async () => {
+            // Get access token from localStorage for authorization
+            const accessToken = localStorage.getItem('cloudlens_access_token');
+
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+
+            if (accessToken) {
+                headers['Authorization'] = `Bearer ${accessToken}`;
+            }
+
             const response = await fetch('/api/dashboard/metrics', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify(filters),
             })
 
@@ -231,11 +258,20 @@ export function useDashboardTrends(filters: DashboardRequest) {
     return useQuery({
         queryKey: QUERY_KEYS.DASHBOARD.TRENDS(filters),
         queryFn: async () => {
+            // Get access token from localStorage for authorization
+            const accessToken = localStorage.getItem('cloudlens_access_token');
+
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+
+            if (accessToken) {
+                headers['Authorization'] = `Bearer ${accessToken}`;
+            }
+
             const response = await fetch('/api/dashboard/metrics', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify(filters),
             })
 
@@ -266,11 +302,20 @@ export function useUpdateDashboardFilters() {
             await queryClient.prefetchQuery({
                 queryKey: QUERY_KEYS.DASHBOARD.METRICS(newFilters),
                 queryFn: async () => {
+                    // Get access token from localStorage for authorization
+                    const accessToken = localStorage.getItem('cloudlens_access_token');
+                    
+                    const headers: Record<string, string> = {
+                        'Content-Type': 'application/json',
+                    };
+                    
+                    if (accessToken) {
+                        headers['Authorization'] = `Bearer ${accessToken}`;
+                    }
+
                     const response = await fetch('/api/dashboard/metrics', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers,
                         body: JSON.stringify(newFilters),
                     })
 

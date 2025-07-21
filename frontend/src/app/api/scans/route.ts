@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { extractTenantFromToken } from '@/lib/utils/auth'
 
 const FASTAPI_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-
-// Helper function to extract tenant ID from JWT token
-function extractTenantFromToken(authHeader: string | null): string | null {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-
-    try {
-        const token = authHeader.replace('Bearer ', '');
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.tenant_id || null;
-    } catch (error) {
-        console.error('Error extracting tenant from token:', error);
-        return null;
-    }
-}
 
 export async function POST(request: NextRequest) {
     try {

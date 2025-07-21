@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
+import { Loader2, Eye, EyeOff, Check, X, ArrowLeft } from "lucide-react";
+
+const FASTAPI_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 interface PasswordRequirement {
   label: string;
@@ -29,56 +30,40 @@ const passwordRequirements: PasswordRequirement[] = [
   { label: "Contains number", test: (p) => /\d/.test(p) },
 ];
 
-export default function SignUpPage() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    firstName: "",
-    lastName: "",
-  });
+function ResetPasswordForm() {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  
   const router = useRouter();
-  const { signup, isAuthenticated } = useAuth();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token');
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    router.push("/dashboard");
-    return null;
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  useEffect(() => {
+    if (!token) {
+      setError("Invalid reset link. Please request a new password reset.");
+    }
+  }, [token]);
 
   const validateForm = () => {
-    if (
-      !formData.email ||
-      !formData.password ||
-      !formData.firstName ||
-      !formData.lastName
-    ) {
+    if (!password || !confirmPassword) {
       return "All fields are required";
-    }
-
-    if (!formData.email.includes("@")) {
-      return "Please enter a valid email address";
     }
 
     // Check password requirements
     const failedRequirements = passwordRequirements.filter(
-      (req) => !req.test(formData.password)
+      (req) => !req.test(password)
     );
     if (failedRequirements.length > 0) {
       return "Password does not meet requirements";
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== confirmPassword) {
       return "Passwords do not match";
     }
 
@@ -87,7 +72,11 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    
+    if (!token) {
+      setError("Invalid reset token");
+      return;
+    }
 
     const validationError = validateForm();
     if (validationError) {
@@ -95,44 +84,130 @@ export default function SignUpPage() {
       return;
     }
 
+    setError("");
     setIsLoading(true);
 
     try {
-      await signup(
-        formData.email,
-        formData.password,
-        formData.firstName,
-        formData.lastName
-      );
-      // Redirect is handled by the auth context
+      const response = await fetch(`${FASTAPI_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: token,
+          new_password: password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsSuccess(true);
+        // Redirect to sign in after 3 seconds
+        setTimeout(() => {
+          router.push('/signin');
+        }, 3000);
+      } else {
+        setError(data.detail || "Failed to reset password. Please try again.");
+      }
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "An error occurred during sign up"
-      );
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <Check className="h-6 w-6 text-green-600" />
+              </div>
+              <CardTitle>Password Reset Successfully</CardTitle>
+              <CardDescription>
+                Your password has been updated successfully
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert>
+                <AlertDescription>
+                  You can now sign in with your new password.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-4">
+                  Redirecting to sign in page...
+                </p>
+                <Link href="/signin">
+                  <Button className="w-full">
+                    Go to Sign In
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Invalid Reset Link</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Alert variant="destructive">
+                <AlertDescription>
+                  This password reset link is invalid or has expired. Please request a new password reset.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="mt-6 space-y-3">
+                <Link href="/forgot-password">
+                  <Button className="w-full">
+                    Request New Reset Link
+                  </Button>
+                </Link>
+                
+                <Link href="/signin">
+                  <Button variant="outline" className="w-full">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Sign In
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Create your CloudLens account
+            Reset your password
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Join thousands of users securing their cloud infrastructure
+            Enter your new password below
           </p>
         </div>
 
-        <Card className="mt-8">
+        <Card>
           <CardHeader>
-            <CardTitle>Sign Up</CardTitle>
+            <CardTitle>Set New Password</CardTitle>
             <CardDescription>
-              Create your account to get started with CloudLens
+              Choose a strong password for your account
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -143,52 +218,8 @@ export default function SignUpPage() {
                 </Alert>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    autoComplete="given-name"
-                    required
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    placeholder="John"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    autoComplete="family-name"
-                    required
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    placeholder="Doe"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="john@example.com"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">New Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -196,12 +227,13 @@ export default function SignUpPage() {
                     type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
                     required
-                    value={formData.password}
-                    onChange={handleInputChange}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     onFocus={() => setPasswordFocused(true)}
                     onBlur={() => setPasswordFocused(false)}
                     className="pr-10"
-                    placeholder="Create a strong password"
+                    placeholder="Enter your new password"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
@@ -221,10 +253,10 @@ export default function SignUpPage() {
                 </div>
 
                 {/* Password requirements */}
-                {(passwordFocused || formData.password) && (
+                {(passwordFocused || password) && (
                   <div className="mt-2 space-y-1">
                     {passwordRequirements.map((req, index) => {
-                      const isValid = req.test(formData.password);
+                      const isValid = req.test(password);
                       return (
                         <div
                           key={index}
@@ -246,7 +278,7 @@ export default function SignUpPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -254,10 +286,11 @@ export default function SignUpPage() {
                     type={showConfirmPassword ? "text" : "password"}
                     autoComplete="new-password"
                     required
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pr-10"
-                    placeholder="Confirm your password"
+                    placeholder="Confirm your new password"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
@@ -275,62 +308,30 @@ export default function SignUpPage() {
                     )}
                   </button>
                 </div>
-                {formData.confirmPassword &&
-                  formData.password !== formData.confirmPassword && (
-                    <p className="text-sm text-red-600">
-                      Passwords do not match
-                    </p>
-                  )}
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  id="terms"
-                  name="terms"
-                  type="checkbox"
-                  required
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label
-                  htmlFor="terms"
-                  className="ml-2 block text-sm text-gray-900"
-                >
-                  I agree to the{" "}
-                  <Link
-                    href="/terms"
-                    className="text-indigo-600 hover:text-indigo-500"
-                  >
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    href="/privacy"
-                    className="text-indigo-600 hover:text-indigo-500"
-                  >
-                    Privacy Policy
-                  </Link>
-                </label>
+                {confirmPassword && password !== confirmPassword && (
+                  <p className="text-sm text-red-600">
+                    Passwords do not match
+                  </p>
+                )}
               </div>
 
               <Button
                 type="submit"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={isLoading || !password || !confirmPassword}
+                className="w-full"
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Account
+                Reset Password
               </Button>
 
               <div className="text-center">
-                <span className="text-sm text-gray-600">
-                  Already have an account?{" "}
-                  <Link
-                    href="/signin"
-                    className="font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    Sign in here
-                  </Link>
-                </span>
+                <Link
+                  href="/signin"
+                  className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-500"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Sign In
+                </Link>
               </div>
             </form>
           </CardContent>
@@ -339,3 +340,11 @@ export default function SignUpPage() {
     </div>
   );
 }
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <ResetPasswordForm />
+    </Suspense>
+  );
+} 

@@ -23,6 +23,10 @@ class User(Base):
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
     last_login = Column(TIMESTAMP(timezone=True), nullable=True)
     
+    # Password reset fields
+    reset_password_token = Column(String(255), nullable=True, index=True)
+    reset_password_expires = Column(TIMESTAMP(timezone=True), nullable=True)
+    
     # Relationship to tenant for organization/team functionality
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenant.id", ondelete="CASCADE"), nullable=True)
     tenant = relationship("Tenant", back_populates="users")

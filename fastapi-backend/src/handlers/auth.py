@@ -14,7 +14,9 @@ from src.schemas.auth import (
     OnboardingResponse,
     PasswordChangeRequest,
     RefreshTokenRequest,
-    MessageResponse
+    MessageResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest
 )
 from src.middleware.auth import get_current_user, get_current_active_user, get_current_context
 from src.utils import (
@@ -22,8 +24,11 @@ from src.utils import (
     verify_password,
     create_access_token,
     create_refresh_token,
-    verify_token
+    verify_token,
+    generate_reset_token,
+    verify_reset_token
 )
+from src.services.email import email_service
 from src.config import settings
 
 
@@ -332,6 +337,110 @@ async def complete_onboarding(
         success=True,
         message="Onboarding completed successfully",
         onboarding_completed=True
+    )
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db_session)
+):
+    """
+    Send password reset email
+    """
+    # Find user by email
+    user = db.query(User).filter(User.email == request.email).first()
+    
+    # Always return success to prevent email enumeration attacks
+    # Even if user doesn't exist, we return success
+    if not user:
+        return MessageResponse(
+            success=True,
+            message="If your email is registered, you will receive password reset instructions."
+        )
+    
+    # Generate reset token
+    reset_token = generate_reset_token(str(user.id))
+    
+    # Store token in database with expiration
+    token_expires = datetime.utcnow() + timedelta(hours=settings.password_reset_token_expire_hours)
+    user.reset_password_token = reset_token
+    user.reset_password_expires = token_expires
+    user.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    # Send email
+    try:
+        user_name = f"{user.first_name} {user.last_name}".strip() or user.email
+        email_sent = await email_service.send_password_reset_email(
+            to_email=user.email,
+            reset_token=reset_token,
+            user_name=user_name
+        )
+        
+        if not email_sent:
+            # Log the error but still return success to user
+            print(f"Failed to send password reset email to {user.email}")
+            
+    except Exception as e:
+        # Log the error but still return success to user
+        print(f"Error sending password reset email: {str(e)}")
+    
+    return MessageResponse(
+        success=True,
+        message="If your email is registered, you will receive password reset instructions."
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db_session)
+):
+    """
+    Reset password using reset token
+    """
+    # Verify reset token
+    user_id = verify_reset_token(request.token)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+    
+    # Find user and verify token matches stored token
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid reset token"
+        )
+    
+    # Check if token matches and is not expired
+    if (not user.reset_password_token or 
+        user.reset_password_token != request.token or 
+        not user.reset_password_expires or 
+        user.reset_password_expires < datetime.utcnow()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+    
+    # Hash new password
+    new_password_hash = hash_password(request.new_password)
+    
+    # Update user password and clear reset token
+    user.password_hash = new_password_hash
+    user.reset_password_token = None
+    user.reset_password_expires = None
+    user.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    return MessageResponse(
+        success=True,
+        message="Password reset successfully"
     )
 
 

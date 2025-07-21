@@ -39,6 +39,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime] = None
+    tenant_id: Optional[UUID] = None
     
     class Config:
         from_attributes = True
@@ -74,6 +75,27 @@ class OnboardingResponse(BaseModel):
 
 class PasswordChangeRequest(BaseModel):
     current_password: str = Field(..., description="Current password")
+    new_password: str = Field(..., min_length=8, description="New password (minimum 8 characters)")
+    
+    @validator('new_password')
+    def validate_new_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('New password must be at least 8 characters long')
+        if not any(c.isupper() for c in v):
+            raise ValueError('New password must contain at least one uppercase letter')
+        if not any(c.islower() for c in v):
+            raise ValueError('New password must contain at least one lowercase letter')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('New password must contain at least one digit')
+        return v
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr = Field(..., description="Email address to send reset link")
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., description="Password reset token")
     new_password: str = Field(..., min_length=8, description="New password (minimum 8 characters)")
     
     @validator('new_password')

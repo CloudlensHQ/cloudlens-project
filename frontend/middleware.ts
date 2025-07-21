@@ -56,11 +56,10 @@ async function refreshTokens(refreshToken: string): Promise<{ accessToken: strin
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Skip middleware for static files and API routes
+    // Skip middleware for static files, Next.js internals, and public assets
     if (
         pathname.startsWith('/_next/') ||
-        pathname.startsWith('/api/') ||
-        pathname.includes('.')
+        pathname.includes('.') && !pathname.startsWith('/api/') // Skip files but not API routes
     ) {
         return NextResponse.next();
     }
@@ -80,6 +79,12 @@ export async function middleware(request: NextRequest) {
 
     const isAuthenticated = !!accessToken && !isTokenExpired(accessToken);
     const hasValidRefreshToken = !!refreshToken && !isTokenExpired(refreshToken);
+
+    // For API routes, just continue without setting headers
+    // (API routes will extract tenant info from JWT tokens directly)
+    if (pathname.startsWith('/api/')) {
+        return NextResponse.next();
+    }
 
     // Handle token refresh if access token is expired but refresh token is valid
     if (!isAuthenticated && hasValidRefreshToken) {
@@ -146,39 +151,33 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // Add authorization header to API requests if authenticated
-    const response = NextResponse.next();
-
-    if (isAuthenticated && accessToken) {
-        // Check if token is near expiry and refresh proactively
-        if (isTokenNearExpiry(accessToken) && hasValidRefreshToken) {
-            // Don't block the request, but attempt refresh in background
-            refreshTokens(refreshToken).then(refreshedTokens => {
-                if (refreshedTokens) {
-                    // This won't affect the current request but will update tokens for future requests
-                    console.log('Proactively refreshed tokens');
-                }
-            });
-        }
-
-        // Add auth header for internal API calls
-        response.headers.set('x-user-id', userData?.id || '');
-        response.headers.set('x-tenant-id', userData?.tenantId || '');
+    // Check if token is near expiry and refresh proactively
+    if (isAuthenticated && accessToken && isTokenNearExpiry(accessToken) && hasValidRefreshToken) {
+        // Don't block the request, but attempt refresh in background
+        refreshTokens(refreshToken).then(refreshedTokens => {
+            if (refreshedTokens) {
+                // This won't affect the current request but will update tokens for future requests
+                console.log('Proactively refreshed tokens');
+            }
+        });
     }
 
-    return response;
+    return NextResponse.next();
 }
 
 export const config = {
     matcher: [
         /*
          * Match all request paths except for the ones starting with:
-         * - api (API routes)
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
-         * - public folder
+         * - public folder files
+         * 
+         * BUT INCLUDE:
+         * - api (API routes) - we need these for authentication headers
+         * - all other pages
          */
-        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)',
+        '/((?!_next/static|_next/image|favicon.ico).*)',
     ],
 }; 

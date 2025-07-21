@@ -20,6 +20,7 @@ from ..schemas.dashboard import (
     ResourceTrend,
     TopResource
 )
+from src.middleware.auth import get_current_context, TenantContext
 
 api = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
@@ -34,6 +35,7 @@ class DashboardRequest(BaseModel):
 @api.post("/metrics", response_model=DashboardResponse)
 async def get_dashboard_metrics(
     request: DashboardRequest,
+    context: TenantContext = Depends(get_current_context),
     db: Any = Depends(get_db_session)
 ):
     """

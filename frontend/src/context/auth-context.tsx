@@ -77,6 +77,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // Helper function to transform user data from snake_case to camelCase
+  const transformUserData = (userData: any) => ({
+    ...userData,
+    onboardingCompleted:
+      userData.onboarding_completed ?? userData.onboardingCompleted,
+    firstName: userData.first_name ?? userData.firstName,
+    lastName: userData.last_name ?? userData.lastName,
+    isActive: userData.is_active ?? userData.isActive,
+    isVerified: userData.is_verified ?? userData.isVerified,
+    createdAt: userData.created_at ?? userData.createdAt,
+    updatedAt: userData.updated_at ?? userData.updatedAt,
+    lastLogin: userData.last_login ?? userData.lastLogin,
+    tenantId: userData.tenant_id ?? userData.tenantId,
+  });
+
   // Initialize auth state from localStorage and cookies
   useEffect(() => {
     const initializeAuth = async () => {
@@ -87,7 +102,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (accessToken && refreshToken && storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
+          // Transform user data to ensure consistent camelCase format
+          const transformedUser = transformUserData(parsedUser);
+          setUser(transformedUser);
           setTokens({
             accessToken,
             refreshToken,
@@ -98,7 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Set cookies for middleware
           setCookie(ACCESS_TOKEN_KEY, accessToken, 0.02); // 30 minutes
           setCookie(REFRESH_TOKEN_KEY, refreshToken, 30); // 30 days
-          setCookie(USER_KEY, JSON.stringify(parsedUser), 30);
+          setCookie(USER_KEY, JSON.stringify(transformedUser), 30);
 
           // Verify token is still valid
           await verifyCurrentUser(accessToken);
@@ -128,9 +145,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const userData = await response.json();
-      setUser(userData);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
-      setCookie(USER_KEY, JSON.stringify(userData), 30);
+      const transformedUserData = transformUserData(userData);
+      setUser(transformedUserData);
+      localStorage.setItem(USER_KEY, JSON.stringify(transformedUserData));
+      setCookie(USER_KEY, JSON.stringify(transformedUserData), 30);
     } catch (error) {
       console.error("User verification error:", error);
       clearAuthData();
@@ -155,17 +173,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const storeAuthData = (authData: any) => {
     const { access_token, refresh_token, user: userData } = authData;
 
+    // Transform user data from snake_case to camelCase to match frontend expectations
+    const transformedUserData = transformUserData(userData);
+
     // Store in localStorage
     localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
-    localStorage.setItem(USER_KEY, JSON.stringify(userData));
+    localStorage.setItem(USER_KEY, JSON.stringify(transformedUserData));
 
     // Store in cookies for middleware
     setCookie(ACCESS_TOKEN_KEY, access_token, 0.02); // 30 minutes
     setCookie(REFRESH_TOKEN_KEY, refresh_token, 30); // 30 days
-    setCookie(USER_KEY, JSON.stringify(userData), 30);
+    setCookie(USER_KEY, JSON.stringify(transformedUserData), 30);
 
-    setUser(userData);
+    setUser(transformedUserData);
     setTokens({
       accessToken: access_token,
       refreshToken: refresh_token,
