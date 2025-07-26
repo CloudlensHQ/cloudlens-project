@@ -1,3 +1,4 @@
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any, Tuple
@@ -14,10 +15,7 @@ from dbschema.db_connector import get_db_session
 from dbschema.model import CloudScan, ServiceScanResult, User, Tenant
 from src.middleware.auth import get_tenant_scoped_context, get_current_context, TenantContext
 from src.jobs.aws_cloud_scan import process_scan_request_v2
-from src.encryption import EncryptionService
-
-# Initialize encryption service
-encryption_service = EncryptionService()
+from src.encryption import get_encryption_service
 
 api = APIRouter(prefix="/api/scan", tags=["AWS Scanning"])
 
@@ -28,10 +26,11 @@ class AWSCloudScanRequest(BaseModel):
     encrypted_aws_session_token: Optional[str] = None
     excluded_regions: Optional[List[str]] = None
     scan_options: Optional[int] = 840
+    scan_name: Optional[str] = "AWS Security Scan"
 
 class ScanResponse(BaseModel):
     """Scan response model"""
-    scan_id: str
+    scan_id: str | None
     message: str
     status: str
     timestamp: str
@@ -104,7 +103,7 @@ async def aws_cloud_scan(
         HTTPException: If credentials are invalid or scan initialization fails
     """
     # Generate unique scan ID for tracking
-    scan_id = str(uuid.uuid4())
+    scan_id = None
     
     # Log incoming request (without sensitive data)
     logger.info(
@@ -120,10 +119,12 @@ async def aws_cloud_scan(
     )
     
     try:
-        # Decrypt AWS credentials
+        # Decrypt AWS credentials using the simple encryption service
         logger.info("Starting credential decryption", extra={"scan_id": scan_id})
         
         try:
+            encryption_service = get_encryption_service()
+            
             aws_access_key = encryption_service.decrypt(request.encrypted_aws_access_key)
             aws_secret_key = encryption_service.decrypt(request.encrypted_aws_secret_key)
             aws_session_token = None
@@ -154,7 +155,7 @@ async def aws_cloud_scan(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Failed to decrypt AWS credentials: {str(e)}"
             )
-        
+
         # Validate that decrypted credentials are not empty
         if not aws_access_key or not aws_secret_key:
             logger.error(
@@ -172,13 +173,16 @@ async def aws_cloud_scan(
         
         # Create CloudScan record
         logger.info("Creating cloud scan record", extra={"scan_id": scan_id})
+
+        
+    
+        cloud_scan = None
         
         try:
             cloud_scan = CloudScan(
-                id=uuid.UUID(scan_id),
                 tenant_id=context.tenant_id,  # Use tenant_id instead of created_by
-                name="AWS Security Scan",
-                status="RUNNING",
+                name=request.scan_name,
+                status="IN_PROGRESS",
                 cloud_provider="AWS",
                 cloud_scan_metadata={
                     "excluded_regions": request.excluded_regions or [],
@@ -188,11 +192,12 @@ async def aws_cloud_scan(
             )
             db.add(cloud_scan)
             db.commit()
+
+            scan_id = str(cloud_scan.id)
             
             logger.info(
                 "Scan record created successfully",
                 extra={
-                    "scan_id": scan_id,
                     "tenant_id": str(context.tenant_id),
                     "cloud_provider": "AWS"
                 }
@@ -200,13 +205,13 @@ async def aws_cloud_scan(
             
         except Exception as e:
             logger.error(
-                "Failed to create scan record in database",
+                f"Failed to create scan record in database: {str(e)}",
                 extra={
-                    "scan_id": scan_id,
                     "error": str(e),
                     "tenant_id": str(context.tenant_id)
                 }
             )
+            print(traceback.format_exc())
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to create scan record: {str(e)}"
@@ -214,6 +219,13 @@ async def aws_cloud_scan(
         
         # Add scan task to background processing
         logger.info("Adding scan task to background processing", extra={"scan_id": scan_id})
+
+
+        if not scan_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create scan record"
+            )
         
         background_tasks.add_task(
             execute_aws_scan,
@@ -231,14 +243,14 @@ async def aws_cloud_scan(
             extra={
                 "scan_id": scan_id,
                 "tenant_id": str(context.tenant_id),
-                "status": "RUNNING"
+                "status": "IN_PROGRESS"
             }
         )
         
         return ScanResponse(
             scan_id=scan_id,
             message="AWS cloud scan initiated successfully",
-            status="RUNNING",
+            status="IN_PROGRESS",
             timestamp=datetime.now().isoformat(),
             tenant_id=str(context.tenant_id)
         )
@@ -249,11 +261,11 @@ async def aws_cloud_scan(
         logger.error(
             "Unexpected error in AWS scan endpoint",
             extra={
-                "scan_id": scan_id,
                 "error": str(e),
                 "tenant_id": str(context.tenant_id)
             }
         )
+        print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error occurred: {str(e)}"
@@ -289,10 +301,15 @@ async def execute_aws_scan(
             "scan_timeout": scan_options
         }
     )
+
     
     try:
+
+        
         # Execute the actual scan
         logger.info("Executing AWS scan process", extra={"scan_id": scan_id})
+
+
         
         result = process_scan_request_v2(
             aws_access_key=aws_access_key,
@@ -314,7 +331,7 @@ async def execute_aws_scan(
         # Update scan status to completed
         logger.info("Updating scan status to COMPLETED", extra={"scan_id": scan_id})
         
-        with get_db(application_name='background-scan-update') as db:
+        with get_db_session(application_name='background-scan-update') as db:
             scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
             if scan:
                 scan.status = "COMPLETED"
@@ -352,7 +369,7 @@ async def execute_aws_scan(
         try:
             logger.info("Updating scan status to FAILED", extra={"scan_id": scan_id})
             
-            with get_db(application_name='background-scan-error') as db:
+            with get_db_session(application_name='background-scan-error') as db:
                 scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
                 if scan:
                     scan.status = "FAILED"

@@ -48,6 +48,7 @@ import {
 import { useScanDetailsWithRefresh } from "@/hooks/queries/useScanDetails";
 import ScanServiceResults from "@/components/ScanServiceResults";
 import RegionsCards from "@/components/RegionsCards";
+import NewScanModal from "@/components/NewScanModal";
 import { Region, useRegions } from "@/context/regions-context";
 
 const formatDate = (dateString: string) => {
@@ -97,6 +98,7 @@ export default function ScansPage() {
   const [selectedScan, setSelectedScan] = useState<Scan | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [showScanDetails, setShowScanDetails] = useState(false);
+  const [showNewScanModal, setShowNewScanModal] = useState(false);
 
   const {
     data: scans = [],
@@ -189,6 +191,7 @@ export default function ScansPage() {
     setSelectedScan(null);
     setSelectedRegion(null);
     setShowScanDetails(false);
+    setShowNewScanModal(false);
     updateURL();
   };
 
@@ -401,9 +404,18 @@ export default function ScansPage() {
     </div>
   );
 
+  const handleNewScanClick = () => {
+    setShowNewScanModal(true);
+  };
+
+  const handleScanCreated = () => {
+    // Refresh the scans list
+    refresh();
+  };
+
   const toolbar = (
     <div className="flex items-center gap-2">
-      <Button>
+      <Button onClick={handleNewScanClick}>
         <Plus className="h-4 w-4 mr-2" />
         New Scan
       </Button>
@@ -806,6 +818,13 @@ export default function ScansPage() {
           />
         </CardContent>
       </Card>
+
+      {/* New Scan Modal */}
+      <NewScanModal
+        open={showNewScanModal}
+        onOpenChange={setShowNewScanModal}
+        onScanCreated={handleScanCreated}
+      />
     </div>
   );
 }

@@ -1,57 +1,104 @@
 import base64
 import os
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
 from typing import Tuple
+import secrets
 
 from .config import settings
 
 
-class EncryptionService:
+class SimpleEncryptionService:
+    """
+    Simple AES encryption service without salt or key derivation.
+    Uses the encryption key directly for AES-256-CBC encryption.
+    """
+    
     def __init__(self):
         self.encryption_key = settings.encryption_key
-        self._fernet = None
+        # Ensure we have a 32-byte key for AES-256
+        self._validate_key()
     
-    def _get_fernet(self) -> Fernet:
-        """Get or create Fernet cipher instance"""
-        if self._fernet is None:
-            # If encryption_key is a password, derive a key from it
-            if len(self.encryption_key) != 44:  # Not a base64-encoded 32-byte key
-                # Derive key from password
-                salt = b'stable_salt_for_aws_creds'  # In production, use a random salt per organization
-                kdf = PBKDF2HMAC(
-                    algorithm=hashes.SHA256(),
-                    length=32,
-                    salt=salt,
-                    iterations=100000,
-                )
-                key = base64.urlsafe_b64encode(kdf.derive(self.encryption_key.encode()))
-            else:
-                key = self.encryption_key.encode()
-            
-            self._fernet = Fernet(key)
-        return self._fernet
+    def _validate_key(self):
+        """Validate and prepare the encryption key"""
+        if len(self.encryption_key) < 32:
+            # Pad key to 32 bytes if shorter
+            self.encryption_key = self.encryption_key.ljust(32, '0')
+        elif len(self.encryption_key) > 32:
+            # Truncate key to 32 bytes if longer
+            self.encryption_key = self.encryption_key[:32]
+        
+        # Convert to bytes
+        self.key_bytes = self.encryption_key.encode('utf-8')
     
     def encrypt(self, plaintext: str) -> str:
-        """Encrypt plaintext string and return base64 encoded encrypted data"""
+        """
+        Encrypt plaintext string and return base64 encoded encrypted data.
+        Format: base64(iv + encrypted_data)
+        """
         if not plaintext:
             return ""
         
-        fernet = self._get_fernet()
-        encrypted_data = fernet.encrypt(plaintext.encode())
-        return base64.urlsafe_b64encode(encrypted_data).decode()
+        try:
+            # Generate random 16-byte IV
+            iv = secrets.token_bytes(16)
+            
+            # Create cipher
+            cipher = Cipher(
+                algorithms.AES(self.key_bytes),
+                modes.CBC(iv),
+                backend=default_backend()
+            )
+            encryptor = cipher.encryptor()
+            
+            # Pad plaintext to be a multiple of 16 bytes (PKCS7 padding)
+            plaintext_bytes = plaintext.encode('utf-8')
+            padding_length = 16 - (len(plaintext_bytes) % 16)
+            padded_plaintext = plaintext_bytes + bytes([padding_length] * padding_length)
+            
+            # Encrypt
+            encrypted_data = encryptor.update(padded_plaintext) + encryptor.finalize()
+            
+            # Combine IV + encrypted data and encode as base64
+            combined = iv + encrypted_data
+            return base64.b64encode(combined).decode('utf-8')
+            
+        except Exception as e:
+            raise ValueError(f"Failed to encrypt data: {str(e)}")
     
     def decrypt(self, encrypted_data: str) -> str:
-        """Decrypt base64 encoded encrypted data and return plaintext string"""
+        """
+        Decrypt base64 encoded encrypted data and return plaintext string.
+        Expected format: base64(iv + encrypted_data)
+        """
         if not encrypted_data:
             return ""
         
-        fernet = self._get_fernet()
         try:
-            decoded_data = base64.urlsafe_b64decode(encrypted_data.encode())
-            decrypted_data = fernet.decrypt(decoded_data)
-            return decrypted_data.decode()
+            # Decode base64
+            combined_data = base64.b64decode(encrypted_data.encode('utf-8'))
+            
+            # Extract IV (first 16 bytes) and encrypted data
+            iv = combined_data[:16]
+            encrypted_bytes = combined_data[16:]
+            
+            # Create cipher
+            cipher = Cipher(
+                algorithms.AES(self.key_bytes),
+                modes.CBC(iv),
+                backend=default_backend()
+            )
+            decryptor = cipher.decryptor()
+            
+            # Decrypt
+            padded_plaintext = decryptor.update(encrypted_bytes) + decryptor.finalize()
+            
+            # Remove PKCS7 padding
+            padding_length = padded_plaintext[-1]
+            plaintext_bytes = padded_plaintext[:-padding_length]
+            
+            return plaintext_bytes.decode('utf-8')
+            
         except Exception as e:
             raise ValueError(f"Failed to decrypt data: {str(e)}")
     
@@ -72,22 +119,15 @@ class EncryptionService:
         return access_key, secret_key, session_token
 
 
-# Global encryption service instance
-encryption_service = EncryptionService()
+# Create a singleton instance
+_encryption_service = None
 
+def get_encryption_service() -> SimpleEncryptionService:
+    """Get the singleton encryption service instance"""
+    global _encryption_service
+    if _encryption_service is None:
+        _encryption_service = SimpleEncryptionService()
+    return _encryption_service
 
-def generate_encryption_key() -> str:
-    """Generate a new encryption key for use in settings"""
-    key = Fernet.generate_key()
-    return key.decode()
-
-
-# Utility functions for easy access
-def encrypt_string(plaintext: str) -> str:
-    """Convenience function to encrypt a string"""
-    return encryption_service.encrypt(plaintext)
-
-
-def decrypt_string(encrypted_data: str) -> str:
-    """Convenience function to decrypt a string"""
-    return encryption_service.decrypt(encrypted_data) 
+# For backwards compatibility, keep the old class name as alias
+EncryptionService = SimpleEncryptionService 
