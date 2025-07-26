@@ -5,6 +5,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/react-query";
 import SidebarLayout from "@/components/sidebar-layout";
 import { RegionsProvider } from "@/context/regions-context";
+import { AuthProvider } from "@/context/auth-context";
+import RouteProtection from "@/components/RouteProtection";
 import RegionsInitializer from "@/components/RegionsInitializer";
 
 const geistSans = Geist({
@@ -34,10 +36,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <RouteProtection>
           <RegionsProvider>
             <RegionsInitializer />
             <SidebarLayout>{children}</SidebarLayout>
           </RegionsProvider>
+            </RouteProtection>
+          </AuthProvider>
         </QueryClientProvider>
       </body>
     </html>

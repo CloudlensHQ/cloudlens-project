@@ -1,30 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { extractTenantFromToken } from '@/lib/utils/auth'
 
-const FASTAPI_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL || 'http://localhost:9000'
+const FASTAPI_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json()
+        // Extract tenant ID from JWT token
+        const authHeader = request.headers.get('authorization');
+        const tenantId = extractTenantFromToken(authHeader);
+        console.log('tenantId', tenantId)
 
-        // Validate required fields
-        if (!body.tenant_id) {
+        if (!tenantId) {
             return NextResponse.json(
-                { error: 'tenant_id is required' },
-                { status: 400 }
-            )
+                { error: 'Authentication required or invalid token' },
+                { status: 401 }
+            );
         }
 
-        // Forward request to FastAPI backend
+        const body = await request.json()
+
+        // Build request body with authenticated user's tenant_id
+        const requestBody = {
+            tenant_id: tenantId,
+            ...(body.scan_id && { scan_id: body.scan_id }),
+            ...(body.days && { days: body.days }),
+        };
+
+        // Forward request to FastAPI backend with authentication
         const response = await fetch(`${FASTAPI_BASE_URL}/api/dashboard/metrics`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Forward any auth headers if needed
-                ...(request.headers.get('authorization') && {
-                    'Authorization': request.headers.get('authorization')!
-                }),
+                'Authorization': authHeader!,
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify(requestBody),
         })
 
         if (!response.ok) {
@@ -61,20 +70,25 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
     // Handle GET requests with query parameters
     try {
+        // Extract tenant ID from JWT token
+        const authHeader = request.headers.get('authorization');
+        const tenantId = extractTenantFromToken(authHeader);
+
+        console.log('tenantId', tenantId)
+
+        if (!tenantId) {
+            return NextResponse.json(
+                { error: 'Authentication required or invalid token' },
+                { status: 401 }
+            );
+        }
+
         const { searchParams } = new URL(request.url)
-        const tenant_id = searchParams.get('tenant_id')
         const scan_id = searchParams.get('scan_id')
         const days = searchParams.get('days')
 
-        if (!tenant_id) {
-            return NextResponse.json(
-                { error: 'tenant_id query parameter is required' },
-                { status: 400 }
-            )
-        }
-
-        // Build query string for FastAPI
-        const queryParams = new URLSearchParams({ tenant_id })
+        // Build query string for FastAPI using authenticated tenant_id
+        const queryParams = new URLSearchParams({ tenant_id: tenantId })
         if (scan_id) queryParams.append('scan_id', scan_id)
         if (days) queryParams.append('days', days)
 
@@ -82,9 +96,7 @@ export async function GET(request: NextRequest) {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                ...(request.headers.get('authorization') && {
-                    'Authorization': request.headers.get('authorization')!
-                }),
+                'Authorization': authHeader!,
             },
         })
 
