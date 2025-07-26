@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState } from "react";
@@ -71,7 +72,8 @@ export default function ForgotPasswordPage() {
               </div>
               <CardTitle>Check Your Email</CardTitle>
               <CardDescription>
-                We've sent password reset instructions to your email address
+                We&apos;ve sent password reset instructions to your email
+                address
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -81,8 +83,8 @@ export default function ForgotPasswordPage() {
 
               <div className="space-y-4">
                 <p className="text-sm text-gray-600 text-center">
-                  Didn't receive an email? Check your spam folder or try again
-                  with a different email address.
+                  Didn&apos;t receive an email? Check your spam folder or try
+                  again with a different email address.
                 </p>
 
                 <Button
@@ -122,8 +124,8 @@ export default function ForgotPasswordPage() {
             Forgot your password?
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Enter your email address and we'll send you a link to reset your
-            password.
+            Enter your email address and we&apos;ll send you a link to reset
+            your password.
           </p>
         </div>
 
@@ -131,7 +133,7 @@ export default function ForgotPasswordPage() {
           <CardHeader>
             <CardTitle>Reset Password</CardTitle>
             <CardDescription>
-              We'll send you a secure link to reset your password
+              We&apos;ll send you a secure link to reset your password
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -178,7 +180,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div className="text-sm text-gray-600">
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <Link
                     href="/signup"
                     className="font-medium text-indigo-600 hover:text-indigo-500"

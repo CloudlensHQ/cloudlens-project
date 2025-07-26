@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Database service
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloudlens-postgres
+    environment:
+      POSTGRES_DB: cloudlens_db
+      POSTGRES_USER: cloudlens_user
+      POSTGRES_PASSWORD: cloudlens_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    networks:
+      - cloudlens-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cloudlens_user -d cloudlens_db']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend service
+  backend:
+    build:
+      context: ./fastapi-backend
+      dockerfile: Dockerfile
+    container_name: cloudlens-backend
+    ports:
+      - '8000:8000'
+    networks:
+      - cloudlens-network
+    env_file:
+      - ./fastapi-backend/.env
+    environment:
+      # Override database configuration for container networking
+      DATABASE_HOSTNAME: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: cloudlens_user
+      DATABASE_PASSWORD: cloudlens_password
+      DATABASE_NAME: cloudlens_db
+      # Override API settings for container
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      [
+        'uv',
+        'run',
+        'uvicorn',
+        'src.main:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8000',
+      ]
+    volumes:
+      - ./fastapi-backend/src:/app
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloudlens-frontend
+    ports:
+      - '3000:3000'
+    networks:
+      - cloudlens-network
+    env_file:
+      - ./frontend/.env
+    environment:
+      # Override backend URL for container networking
+      NEXT_PUBLIC_BACKEND_URL: http://backend:8000
+      # Set production environment
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--tries=1',
+          '--spider',
+          'http://localhost:3000/',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Network configuration
+networks:
+  cloudlens-network:
+    driver: bridge
+
+# Volume configuration
+volumes:
+  postgres_data:
+    driver: local

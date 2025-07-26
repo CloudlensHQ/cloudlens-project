@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Bell, Shield, Palette, Database } from "lucide-react";
+import { Bell, Shield, Palette, Database } from "lucide-react";
 
 export default function SettingsPage() {
   return (

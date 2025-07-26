@@ -1,7 +1,5 @@
-// Enhanced API client with automatic token management
-import { useAuth } from '@/context/auth-context';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-// Token storage keys
 const ACCESS_TOKEN_KEY = 'cloudlens_access_token';
 const REFRESH_TOKEN_KEY = 'cloudlens_refresh_token';
 const USER_KEY = 'cloudlens_user';

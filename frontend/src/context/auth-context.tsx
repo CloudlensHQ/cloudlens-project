@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
@@ -5,6 +6,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -92,6 +94,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     tenantId: userData.tenant_id ?? userData.tenantId,
   });
 
+  // Clear auth data from both localStorage and cookies
+  const clearAuthData = useCallback(() => {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+
+    deleteCookie(ACCESS_TOKEN_KEY);
+    deleteCookie(REFRESH_TOKEN_KEY);
+    deleteCookie(USER_KEY);
+
+    setUser(null);
+    setTokens(null);
+  }, []);
+
+  // Verify current user with backend
+  const verifyCurrentUser = useCallback(
+    async (accessToken: string) => {
+      try {
+        const response = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Token verification failed");
+        }
+
+        const userData = await response.json();
+        const transformedUserData = transformUserData(userData);
+        setUser(transformedUserData);
+        localStorage.setItem(USER_KEY, JSON.stringify(transformedUserData));
+        setCookie(USER_KEY, JSON.stringify(transformedUserData), 30);
+      } catch (error) {
+        console.error("User verification error:", error);
+        clearAuthData();
+      }
+    },
+    [transformUserData, clearAuthData]
+  );
+
   // Initialize auth state from localStorage and cookies
   useEffect(() => {
     const initializeAuth = async () => {
@@ -129,45 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initializeAuth();
-  }, []);
-
-  // Verify current user with backend
-  const verifyCurrentUser = async (accessToken: string) => {
-    try {
-      const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Token verification failed");
-      }
-
-      const userData = await response.json();
-      const transformedUserData = transformUserData(userData);
-      setUser(transformedUserData);
-      localStorage.setItem(USER_KEY, JSON.stringify(transformedUserData));
-      setCookie(USER_KEY, JSON.stringify(transformedUserData), 30);
-    } catch (error) {
-      console.error("User verification error:", error);
-      clearAuthData();
-    }
-  };
-
-  // Clear auth data from both localStorage and cookies
-  const clearAuthData = () => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-
-    deleteCookie(ACCESS_TOKEN_KEY);
-    deleteCookie(REFRESH_TOKEN_KEY);
-    deleteCookie(USER_KEY);
-
-    setUser(null);
-    setTokens(null);
-  };
+  }, [verifyCurrentUser]);
 
   // Store auth data in both localStorage and cookies
   const storeAuthData = (authData: any) => {

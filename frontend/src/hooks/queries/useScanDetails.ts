@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery } from '@tanstack/react-query'
 import { QUERY_KEYS } from '@/lib/query-keys'
 
@@ -121,7 +122,7 @@ const fetchScanDetails = async (scanId: string): Promise<ScanDetails> => {
 
 export const useScanDetails = (scanId: string | null) => {
     return useQuery({
-        queryKey: QUERY_KEYS.SCANS.DETAIL(scanId),
+        queryKey: QUERY_KEYS.SCANS.DETAIL(scanId || ''),
         queryFn: () => fetchScanDetails(scanId!),
         enabled: !!scanId,
         staleTime: 5 * 60 * 1000, // 5 minutes

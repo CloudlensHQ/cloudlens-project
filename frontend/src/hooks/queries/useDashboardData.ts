@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, useQueryClient } from '@/lib/react-query'
 import { QUERY_KEYS } from '@/lib/query-keys'
-import { DashboardData } from '@/context/dashboard-context'
 
 // Types for API requests
 interface DashboardRequest {
@@ -304,11 +304,11 @@ export function useUpdateDashboardFilters() {
                 queryFn: async () => {
                     // Get access token from localStorage for authorization
                     const accessToken = localStorage.getItem('cloudlens_access_token');
-                    
+
                     const headers: Record<string, string> = {
                         'Content-Type': 'application/json',
                     };
-                    
+
                     if (accessToken) {
                         headers['Authorization'] = `Bearer ${accessToken}`;
                     }
@@ -337,17 +337,17 @@ export function useUpdateDashboardFilters() {
 }
 
 // Utility function to invalidate all dashboard queries
-export function invalidateAllDashboardQueries() {
+export function useInvalidateAllDashboardQueries() {
     const queryClient = useQueryClient()
-    return queryClient.invalidateQueries({
+    return () => queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.DASHBOARD.ALL
     })
 }
 
 // Utility function to clear dashboard cache
-export function clearDashboardCache() {
+export function useClearDashboardCache() {
     const queryClient = useQueryClient()
-    return queryClient.removeQueries({
+    return () => queryClient.removeQueries({
         queryKey: QUERY_KEYS.DASHBOARD.ALL
     })
 }

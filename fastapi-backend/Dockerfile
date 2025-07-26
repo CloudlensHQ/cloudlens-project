@@ -30,10 +30,12 @@ COPY ./src /app
 
 RUN apt update && apt upgrade -y && apt install -y socat
 
-COPY ./gel.toml /gel.toml
 COPY ./dbschema /dbschema
 
 ENV PATH="/opt/.venv/bin:$PATH"
 
-# # Reset the entrypoint, don't invoke `uv`
-# ENTRYPOINT []
+# Add curl for health checks
+RUN apt update && apt install -y curl
+
+# Default command to run the application
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

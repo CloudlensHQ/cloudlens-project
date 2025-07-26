@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 "use client";
 
 import { useState } from "react";
@@ -10,21 +12,15 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Calendar,
   MapPin,
   Tag,
   Lock,
   Unlock,
   RotateCw,
-  Eye,
-  EyeOff,
   BarChart3,
-  PieChart,
-  TrendingUp,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -32,7 +28,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,

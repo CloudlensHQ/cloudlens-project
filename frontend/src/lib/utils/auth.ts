@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Helper function to extract tenant ID from JWT token
 export function extractTenantFromToken(authHeader: string | null): string | null {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -39,13 +40,13 @@ export function extractTokenPayload(authHeader: string | null): any | null {
     try {
         const token = authHeader.replace('Bearer ', '');
         const payload = JSON.parse(atob(token.split('.')[1]));
-        
+
         // Check if token is expired
         const currentTime = Date.now() / 1000;
         if (payload.exp && payload.exp < currentTime) {
             return null;
         }
-        
+
         return payload;
     } catch (error) {
         console.error('Error extracting token payload:', error);
