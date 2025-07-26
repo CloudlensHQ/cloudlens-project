@@ -585,27 +585,49 @@ async def get_scans(
         )
 
 @api.get("/scan-status/{scan_id}")
-async def get_scan_status(scan_id: str, db: Any = Depends(get_db_session)):
+async def get_scan_status(
+    scan_id: str, 
+    context: TenantContext = Depends(get_current_context),
+    db: Any = Depends(get_db_session)
+):
     """
     Get the status of a specific scan.
+    This endpoint is tenant-scoped and requires authentication.
     
     Args:
         scan_id: The unique identifier of the scan
+        context: Authenticated user and tenant context
         db: Database connection
     
     Returns:
         Dict containing scan status and metadata
     
     Raises:
-        HTTPException: If scan is not found
+        HTTPException: If scan is not found or access is denied
     """
-    logger.info("Scan status request received", extra={"scan_id": scan_id})
+    logger.info(
+        "Scan status request received", 
+        extra={
+            "scan_id": scan_id,
+            "tenant_id": str(context.tenant_id),
+            "user_id": str(context.user_id)
+        }
+    )
     
     try:
-        scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
+        scan = db.query(CloudScan).filter(
+            CloudScan.id == uuid.UUID(scan_id),
+            CloudScan.tenant_id == context.tenant_id  # Ensure tenant isolation
+        ).first()
         
         if not scan:
-            logger.warning("Scan not found", extra={"scan_id": scan_id})
+            logger.warning(
+                "Scan not found or access denied", 
+                extra={
+                    "scan_id": scan_id,
+                    "tenant_id": str(context.tenant_id)
+                }
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Scan not found"
@@ -648,36 +670,59 @@ async def get_scan_status(scan_id: str, db: Any = Depends(get_db_session)):
 
     
 @api.get("/scan/{scan_id}") 
-async def get_scan(scan_id: str, db: Any = Depends(get_db_session)):
+async def get_scan(
+    scan_id: str, 
+    context: TenantContext = Depends(get_current_context),
+    db: Any = Depends(get_db_session)
+):
     """
     Get a specific scan by ID with associated service scan results.
+    This endpoint is tenant-scoped and requires authentication.
     
     Args:
         scan_id: The unique identifier of the scan
+        context: Authenticated user and tenant context
         db: Database connection
     
     Returns:
         Dict containing scan details and service scan results
     
     Raises:
-        HTTPException: If scan is not found
+        HTTPException: If scan is not found or access is denied
     """
-    logger.info("Scan request received", extra={"scan_id": scan_id})
+    logger.info(
+        "Scan request received", 
+        extra={
+            "scan_id": scan_id,
+            "tenant_id": str(context.tenant_id),
+            "user_id": str(context.user_id)
+        }
+    )
 
     try:
-        # Get the main scan record
-        scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
+        # Get the main scan record with tenant scoping
+        scan = db.query(CloudScan).filter(
+            CloudScan.id == uuid.UUID(scan_id),
+            CloudScan.tenant_id == context.tenant_id  # Ensure tenant isolation
+        ).first()
         
         if not scan:
-            logger.warning("Scan not found", extra={"scan_id": scan_id})
+            logger.warning(
+                "Scan not found or access denied", 
+                extra={
+                    "scan_id": scan_id,
+                    "tenant_id": str(context.tenant_id)
+                }
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Scan not found"
             )
         
-        # Get associated service scan results
+        # Get associated service scan results with tenant scoping
         service_scan_results = db.query(ServiceScanResult).filter(
-            ServiceScanResult.scan_id == uuid.UUID(scan_id)
+            ServiceScanResult.scan_id == uuid.UUID(scan_id),
+            ServiceScanResult.tenant_id == context.tenant_id  # Ensure tenant isolation
         ).all()
         
         logger.info(
@@ -721,7 +766,7 @@ async def get_scan(scan_id: str, db: Any = Depends(get_db_session)):
     except Exception as e:
         logger.error(
             "Error retrieving scan",
-            extra={
+            extra={ 
                 "error": str(e),
                 "scan_id": scan_id
             }

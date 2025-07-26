@@ -1,0 +1,806 @@
+{
+  "scan_id": "c29ee637-db53-49af-ae5f-0dc10b16fb68",
+  "status": "COMPLETED",
+  "name": "AWS Security Scan",
+  "cloud_provider": "AWS",
+  "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733",
+  "metadata": {
+    "scan_timestamp": "2025-03-24T09:11:20.137600",
+    "total_regions_scanned": 5
+  },
+  "created_at": "2025-03-24T03:41:19.056279+00:00",
+  "updated_at": "2025-03-24T03:41:19.056279+00:00",
+  "service_scan_results": [
+    {
+      "id": "e03db4e8-e724-46c5-99ca-8c82f021c544",
+      "service_name": "security_groups",
+      "region": "eu-west-2",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "security_groups"
+      },
+      "service_scan_data": {
+        "SecurityGroups": [
+          {
+            "VpcId": "vpc-ebbdce83",
+            "GroupId": "sg-9078dbf1",
+            "GroupName": "default",
+            "Description": "default VPC security group",
+            "InboundRuleCount": 1,
+            "OutboundRuleCount": 1,
+            "RiskyInboundRules": []
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "c74e3e78-e04a-4c56-b599-440f03336ff7",
+      "service_name": "rds",
+      "region": "eu-west-2",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "rds"
+      },
+      "service_scan_data": {
+        "RDSDatabases": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "92c633c4-7bd9-48ff-ad16-55f28f2ecd59",
+      "service_name": "kms",
+      "region": "eu-west-2",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "kms"
+      },
+      "service_scan_data": {
+        "KMSKeys": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "bbd71b87-daea-4f2f-9cf3-acd03ae447e3",
+      "service_name": "ec2",
+      "region": "ap-south-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "ec2"
+      },
+      "service_scan_data": {
+        "EC2Instances": [
+          {
+            "State": "stopped",
+            "InstanceId": "i-0cd6314941ff42708",
+            "IMDSVersion": "IMDSv1",
+            "InstanceName": "kube-adm",
+            "PublicIpAddress": "N/A",
+            "PrivateIpAddress": "172.31.39.55"
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "a086699e-8ad4-490d-a410-e158d3224be4",
+      "service_name": "ebs",
+      "region": "ap-south-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "ebs"
+      },
+      "service_scan_data": {
+        "EBSVolumes": [
+          {
+            "Size": 8,
+            "State": "in-use",
+            "VolumeId": "vol-0af1a9cc9b60af14d",
+            "Encrypted": false,
+            "CreateTime": "2021-11-15T06:17:51.340000+00:00",
+            "VolumeName": "Unnamed Instance",
+            "AttachedInstanceId": "i-0ebbb9b375f6af135"
+          },
+          {
+            "Size": 20,
+            "State": "in-use",
+            "VolumeId": "vol-01f666ed80a0886c8",
+            "Encrypted": false,
+            "CreateTime": "2025-01-18T18:13:15.889000+00:00",
+            "VolumeName": "Unnamed Instance",
+            "AttachedInstanceId": "i-07e24bcca7aab527a"
+          },
+          {
+            "Size": 10,
+            "State": "available",
+            "VolumeId": "vol-0d56dcc1605778ee0",
+            "Encrypted": false,
+            "CreateTime": "2023-11-03T11:45:23.416000+00:00",
+            "VolumeName": "test-rivana-poc3-dynamic-pvc-2b3ff6f4-dfcc-4818-b896-fca6687ac503",
+            "AttachedInstanceId": null
+          },
+          {
+            "Size": 10,
+            "State": "available",
+            "VolumeId": "vol-048a24ace4412ec58",
+            "Encrypted": false,
+            "CreateTime": "2023-10-09T11:56:08.006000+00:00",
+            "VolumeName": "test-rivana-poc3-dynamic-pvc-9fb7b5a0-2bf2-409b-8ca7-bc5a2bdae625",
+            "AttachedInstanceId": null
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "ae080610-105d-41c4-a38d-d5fa511ab835",
+      "service_name": "s3",
+      "region": "ap-south-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "s3"
+      },
+      "service_scan_data": {
+        "S3Buckets": [
+          {
+            "Region": "us-east-1",
+            "BucketName": "accesspolicyusecasetest",
+            "CreationDate": "2024-10-14T10:02:02+00:00",
+            "EncryptionEnabled": true,
+            "VersioningEnabled": true,
+            "PublicAccessBlockConfiguration": {
+              "BlockPublicAcls": false,
+              "IgnorePublicAcls": false,
+              "BlockPublicPolicy": false,
+              "RestrictPublicBuckets": false
+            }
+          },
+          {
+            "Region": "us-west-2",
+            "BucketName": "amazon-connect-2992ed191cca",
+            "CreationDate": "2024-11-07T21:27:54+00:00",
+            "EncryptionEnabled": true,
+            "VersioningEnabled": false,
+            "PublicAccessBlockConfiguration": {
+              "BlockPublicAcls": true,
+              "IgnorePublicAcls": true,
+              "BlockPublicPolicy": true,
+              "RestrictPublicBuckets": true
+            }
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "8b7820c6-5678-4bcd-a772-a0449f84a737",
+      "service_name": "security_groups",
+      "region": "ap-south-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "security_groups"
+      },
+      "service_scan_data": {
+        "SecurityGroups": [
+          {
+            "VpcId": "vpc-4ad6d722",
+            "GroupId": "sg-0dae63a6821e1c9ed",
+            "GroupName": "launch-wizard-4",
+            "Description": "launch-wizard-4 created 2022-07-15T17:20:51.826Z",
+            "InboundRuleCount": 2,
+            "OutboundRuleCount": 1,
+            "RiskyInboundRules": [
+              {
+                "source": "0.0.0.0/0",
+                "protocol": "tcp",
+                "port_range": "80-80"
+              },
+              {
+                "source": "0.0.0.0/0",
+                "protocol": "tcp",
+                "port_range": "443-443"
+              }
+            ]
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "9e25edfe-d609-454b-ab67-44af7777c09f",
+      "service_name": "rds",
+      "region": "ap-south-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "rds"
+      },
+      "service_scan_data": {
+        "RDSDatabases": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "e95dd83e-700e-497e-89cc-58531c1b1f56",
+      "service_name": "kms",
+      "region": "ap-south-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "kms"
+      },
+      "service_scan_data": {
+        "KMSKeys": [
+          {
+            "KeyId": "7ead0335-8a7d-4265-b256-c98d23fc5fb1",
+            "KeyArn": "arn:aws:kms:ap-south-1:736052533095:key/7ead0335-8a7d-4265-b256-c98d23fc5fb1",
+            "Origin": "AWS_KMS",
+            "KeyState": "Enabled",
+            "KeyUsage": "ENCRYPT_DECRYPT",
+            "CreationDate": "2024-07-26T19:58:52.466000+05:30",
+            "RotationEnabled": true
+          },
+          {
+            "KeyId": "e3387bf4-01bc-4df8-84b4-f94fb750b864",
+            "KeyArn": "arn:aws:kms:ap-south-1:736052533095:key/e3387bf4-01bc-4df8-84b4-f94fb750b864",
+            "Origin": "AWS_KMS",
+            "KeyState": "Enabled",
+            "KeyUsage": "ENCRYPT_DECRYPT",
+            "CreationDate": "2024-08-28T19:50:11.886000+05:30",
+            "RotationEnabled": true
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "188598f8-5c98-474f-8d53-fc4fec542539",
+      "service_name": "iam",
+      "region": "ap-south-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "iam"
+      },
+      "service_scan_data": {
+        "note": "IAM is a global service scanned in us-east-1 only"
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "656b9adf-a03a-4f76-85b8-06f5c6b1e585",
+      "service_name": "ec2",
+      "region": "eu-north-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "ec2"
+      },
+      "service_scan_data": {
+        "EC2Instances": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "33f85671-7d0c-429a-8a51-62829056df68",
+      "service_name": "ebs",
+      "region": "eu-north-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.192853",
+        "service_type": "ebs"
+      },
+      "service_scan_data": {
+        "EBSVolumes": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "e843896c-a931-445b-92be-80c81ea2f532",
+      "service_name": "s3",
+      "region": "eu-north-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "s3"
+      },
+      "service_scan_data": {
+        "S3Buckets": [
+          {
+            "Region": "us-east-1",
+            "BucketName": "accesspolicyusecasetest",
+            "CreationDate": "2024-10-14T10:02:02+00:00",
+            "EncryptionEnabled": true,
+            "VersioningEnabled": true,
+            "PublicAccessBlockConfiguration": {
+              "BlockPublicAcls": false,
+              "IgnorePublicAcls": false,
+              "BlockPublicPolicy": false,
+              "RestrictPublicBuckets": false
+            }
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "97d3c141-8493-45ea-8670-279b84962b56",
+      "service_name": "security_groups",
+      "region": "eu-north-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "security_groups"
+      },
+      "service_scan_data": {
+        "SecurityGroups": [
+          {
+            "VpcId": "vpc-b4f82fdd",
+            "GroupId": "sg-e2033b89",
+            "GroupName": "default",
+            "Description": "default VPC security group",
+            "InboundRuleCount": 1,
+            "OutboundRuleCount": 1,
+            "RiskyInboundRules": []
+          },
+          {
+            "VpcId": "vpc-b4f82fdd",
+            "GroupId": "sg-071e9e28a28efd3c8",
+            "GroupName": "launch-wizard-1",
+            "Description": "launch-wizard-1 created 2024-02-04T10:20:37.829Z",
+            "InboundRuleCount": 0,
+            "OutboundRuleCount": 1,
+            "RiskyInboundRules": []
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "c887a959-d533-4633-8005-63bd565b6a72",
+      "service_name": "rds",
+      "region": "eu-north-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "rds"
+      },
+      "service_scan_data": {
+        "RDSDatabases": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "9555d97a-d994-402c-bc11-1e48bd20abfd",
+      "service_name": "kms",
+      "region": "eu-north-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "kms"
+      },
+      "service_scan_data": {
+        "KMSKeys": [
+          {
+            "KeyId": "2ad45ef3-606b-4fe9-9394-ceef9fb08428",
+            "KeyArn": "arn:aws:kms:eu-north-1:736052533095:key/2ad45ef3-606b-4fe9-9394-ceef9fb08428",
+            "Origin": "AWS_KMS",
+            "KeyState": "Enabled",
+            "KeyUsage": "ENCRYPT_DECRYPT",
+            "CreationDate": "2024-02-12T15:05:40.184000+05:30",
+            "RotationEnabled": false
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "911c103e-4437-433d-8d4d-96a7ab563982",
+      "service_name": "iam",
+      "region": "eu-north-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "iam"
+      },
+      "service_scan_data": {
+        "note": "IAM is a global service scanned in us-east-1 only"
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "abf8362f-1359-4a41-837f-5d0350a10eae",
+      "service_name": "ec2",
+      "region": "eu-west-3",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "ec2"
+      },
+      "service_scan_data": {
+        "EC2Instances": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "4255d910-b72b-4d68-8236-dc6c821c97cb",
+      "service_name": "ebs",
+      "region": "eu-west-3",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "ebs"
+      },
+      "service_scan_data": {
+        "EBSVolumes": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "d0eb66df-b33e-425c-a81a-85ad8a8b79d2",
+      "service_name": "s3",
+      "region": "eu-west-3",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "s3"
+      },
+      "service_scan_data": {
+        "S3Buckets": [
+          {
+            "Region": "us-east-1",
+            "BucketName": "accesspolicyusecasetest",
+            "CreationDate": "2024-10-14T10:02:02+00:00",
+            "EncryptionEnabled": true,
+            "VersioningEnabled": true,
+            "PublicAccessBlockConfiguration": {
+              "BlockPublicAcls": false,
+              "IgnorePublicAcls": false,
+              "BlockPublicPolicy": false,
+              "RestrictPublicBuckets": false
+            }
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "531c3796-7208-4340-a6aa-bf1da0567924",
+      "service_name": "security_groups",
+      "region": "eu-west-3",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.193855",
+        "service_type": "security_groups"
+      },
+      "service_scan_data": {
+        "SecurityGroups": [
+          {
+            "VpcId": "vpc-fef4f997",
+            "GroupId": "sg-1e879d73",
+            "GroupName": "default",
+            "Description": "default VPC security group",
+            "InboundRuleCount": 1,
+            "OutboundRuleCount": 1,
+            "RiskyInboundRules": []
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "8590b730-b369-4be7-9d15-e779a9bece04",
+      "service_name": "rds",
+      "region": "eu-west-3",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "rds"
+      },
+      "service_scan_data": {
+        "RDSDatabases": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "ed242c81-3508-488c-b939-e0b7aed5b1b3",
+      "service_name": "kms",
+      "region": "eu-west-3",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "kms"
+      },
+      "service_scan_data": {
+        "KMSKeys": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "d30a6c33-0ba7-4b53-b816-c9dd64275deb",
+      "service_name": "iam",
+      "region": "eu-west-3",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "iam"
+      },
+      "service_scan_data": {
+        "note": "IAM is a global service scanned in us-east-1 only"
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "2d0eb349-8d34-4abb-ab0b-4f186ed15be5",
+      "service_name": "ec2",
+      "region": "eu-west-2",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "ec2"
+      },
+      "service_scan_data": {
+        "EC2Instances": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "585feb74-ff66-493f-a636-2ceb84ad412f",
+      "service_name": "ebs",
+      "region": "eu-west-2",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "ebs"
+      },
+      "service_scan_data": {
+        "EBSVolumes": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "0f924556-dd23-4b24-88ed-92c10709c67c",
+      "service_name": "s3",
+      "region": "eu-west-2",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "s3"
+      },
+      "service_scan_data": {
+        "S3Buckets": [
+          {
+            "Region": "us-east-1",
+            "BucketName": "accesspolicyusecasetest",
+            "CreationDate": "2024-10-14T10:02:02+00:00",
+            "EncryptionEnabled": true,
+            "VersioningEnabled": true,
+            "PublicAccessBlockConfiguration": {
+              "BlockPublicAcls": false,
+              "IgnorePublicAcls": false,
+              "BlockPublicPolicy": false,
+              "RestrictPublicBuckets": false
+            }
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "9869cbfc-1f6f-44b7-b5dd-d4c2381a9c90",
+      "service_name": "iam",
+      "region": "eu-west-2",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "iam"
+      },
+      "service_scan_data": {
+        "note": "IAM is a global service scanned in us-east-1 only"
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "e1e31d48-c210-49c7-918a-7fe2a52c77a8",
+      "service_name": "ec2",
+      "region": "eu-west-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "ec2"
+      },
+      "service_scan_data": {
+        "EC2Instances": [
+          {
+            "State": "stopped",
+            "InstanceId": "i-064464149c9c2eee9",
+            "IMDSVersion": "IMDSv1",
+            "InstanceName": "Devops Project",
+            "PublicIpAddress": "N/A",
+            "PrivateIpAddress": "172.31.22.243"
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "fabb025c-5bab-4089-9fe6-8d3092205b5b",
+      "service_name": "ebs",
+      "region": "eu-west-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "ebs"
+      },
+      "service_scan_data": {
+        "EBSVolumes": [
+          {
+            "Size": 8,
+            "State": "in-use",
+            "VolumeId": "vol-0178d673919642bf2",
+            "Encrypted": false,
+            "CreateTime": "2022-11-10T16:27:55.655000+00:00",
+            "VolumeName": "Unnamed Instance",
+            "AttachedInstanceId": "i-064464149c9c2eee9"
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "6fc3c5f5-b37a-45b1-a4ed-5c57d4c5e458",
+      "service_name": "s3",
+      "region": "eu-west-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "s3"
+      },
+      "service_scan_data": {
+        "S3Buckets": [
+          {
+            "Region": "us-east-1",
+            "BucketName": "accesspolicyusecasetest",
+            "CreationDate": "2024-10-14T10:02:02+00:00",
+            "EncryptionEnabled": true,
+            "VersioningEnabled": true,
+            "PublicAccessBlockConfiguration": {
+              "BlockPublicAcls": false,
+              "IgnorePublicAcls": false,
+              "BlockPublicPolicy": false,
+              "RestrictPublicBuckets": false
+            }
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "40f680e1-b162-486e-8b3e-6f5c2f1b6014",
+      "service_name": "security_groups",
+      "region": "eu-west-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "security_groups"
+      },
+      "service_scan_data": {
+        "SecurityGroups": [
+          {
+            "VpcId": "vpc-08a4da3b7119d47b5",
+            "GroupId": "sg-0bf167a2e0af43f06",
+            "GroupName": "default",
+            "Description": "default VPC security group",
+            "InboundRuleCount": 0,
+            "OutboundRuleCount": 0,
+            "RiskyInboundRules": []
+          },
+          {
+            "VpcId": "vpc-5ec82d27",
+            "GroupId": "sg-f4be20bc",
+            "GroupName": "default",
+            "Description": "default VPC security group",
+            "InboundRuleCount": 1,
+            "OutboundRuleCount": 1,
+            "RiskyInboundRules": []
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "f26ee22d-76fb-4f4b-92ea-cbaef09b3820",
+      "service_name": "rds",
+      "region": "eu-west-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.194856",
+        "service_type": "rds"
+      },
+      "service_scan_data": {
+        "RDSDatabases": []
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "c5ba3be2-b10e-44fb-98ea-d434b20f262a",
+      "service_name": "kms",
+      "region": "eu-west-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.195855",
+        "service_type": "kms"
+      },
+      "service_scan_data": {
+        "KMSKeys": [
+          {
+            "KeyId": "0148d67a-0211-4a91-891c-da3bfdd373d4",
+            "KeyArn": "arn:aws:kms:eu-west-1:736052533095:key/0148d67a-0211-4a91-891c-da3bfdd373d4",
+            "Origin": "AWS_KMS",
+            "KeyState": "Enabled",
+            "KeyUsage": "ENCRYPT_DECRYPT",
+            "CreationDate": "2024-02-23T14:44:01.082000+05:30",
+            "RotationEnabled": true
+          }
+        ]
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    },
+    {
+      "id": "2508f3db-bd68-40da-9774-466d5a0f633e",
+      "service_name": "iam",
+      "region": "eu-west-1",
+      "scan_result_metadata": {
+        "timestamp": "2025-03-24T09:11:20.195855",
+        "service_type": "iam"
+      },
+      "service_scan_data": {
+        "note": "IAM is a global service scanned in us-east-1 only"
+      },
+      "created_at": "2025-03-24T03:41:19.056279+00:00",
+      "updated_at": "2025-03-24T03:41:19.056279+00:00",
+      "tenant_id": "65556962-a76c-46b7-9a90-b3589c240733"
+    }
+  ]
+}

@@ -21,6 +21,8 @@ interface RegionsCardsProps {
     status: string;
     created_at: string;
   };
+  scanResultRegions?: string[]; // Array of region names that have scan data
+  regionServiceCounts?: Record<string, number>; // Count of services per region
   onBack?: () => void;
   onRegionClick?: (region: Region) => void;
 }
@@ -28,12 +30,19 @@ interface RegionsCardsProps {
 export const RegionsCards: React.FC<RegionsCardsProps> = ({
   cloudProvider,
   scanData,
+  scanResultRegions,
+  regionServiceCounts,
   onBack,
   onRegionClick,
 }) => {
   const { getRegionsByProvider, isLoading, error } = useRegions();
 
-  const regions = getRegionsByProvider(cloudProvider);
+  const allRegions = getRegionsByProvider(cloudProvider);
+
+  // Filter regions to only show those with scan data
+  const regions = scanResultRegions
+    ? allRegions.filter((region) => scanResultRegions.includes(region.name))
+    : allRegions;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -106,7 +115,7 @@ export const RegionsCards: React.FC<RegionsCardsProps> = ({
           )}
         </div>
         <Badge variant="outline" className="text-base px-3 py-1">
-          {regions.length} regions
+          {regions.length} {scanResultRegions ? "regions with data" : "regions"}
         </Badge>
       </div>
 
@@ -138,8 +147,18 @@ export const RegionsCards: React.FC<RegionsCardsProps> = ({
                     <span className="text-muted-foreground">Status:</span>
                     <Badge variant="secondary">Available</Badge>
                   </div>
+                  {regionServiceCounts && regionServiceCounts[region.name] && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Services:</span>
+                      <Badge variant="outline">
+                        {regionServiceCounts[region.name]}
+                      </Badge>
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground pt-2">
-                    Click to view scan data
+                    {scanResultRegions
+                      ? "Click to view scan results"
+                      : "Click to view scan data"}
                   </div>
                 </div>
               </CardContent>
@@ -149,9 +168,15 @@ export const RegionsCards: React.FC<RegionsCardsProps> = ({
       ) : (
         <div className="text-center py-12">
           <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No regions found</h3>
+          <h3 className="text-lg font-medium mb-2">
+            {scanResultRegions
+              ? "No regions with scan data"
+              : "No regions found"}
+          </h3>
           <p className="text-muted-foreground">
-            No regions available for {cloudProvider}
+            {scanResultRegions
+              ? `No scan data available for any ${cloudProvider} regions`
+              : `No regions available for ${cloudProvider}`}
           </p>
         </div>
       )}
