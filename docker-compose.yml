@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Database service
   postgres:
-    image: postgres:15-alpine
+    image: docker.io/library/postgres:16
     container_name: cloudlens-postgres
     environment:
       POSTGRES_DB: cloudlens_db
@@ -11,15 +11,16 @@ services:
       POSTGRES_PASSWORD: cloudlens_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./fastapi-backend/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - '5432:5432'
     networks:
       - cloudlens-network
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U cloudlens_user -d cloudlens_db']
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Backend service
   backend:
@@ -27,49 +28,41 @@ services:
       context: ./fastapi-backend
       dockerfile: Dockerfile
     container_name: cloudlens-backend
+    command: >
+      /bin/bash -c "
+      echo 'Waiting for database...' &&
+      while ! nc -z postgres 5432; do sleep 1; done &&
+      echo 'Database is ready!' &&
+      alembic upgrade head &&
+      exec uvicorn src.main:app --proxy-headers --host 0.0.0.0 --port 80 --workers 2 --reload"
     ports:
-      - '8000:8000'
+      - '8000:80'
     networks:
       - cloudlens-network
     env_file:
       - ./fastapi-backend/.env
     environment:
-      # Override database configuration for container networking
+      # Database configuration for container networking
       DATABASE_HOSTNAME: postgres
       DATABASE_PORT: 5432
       DATABASE_USERNAME: cloudlens_user
       DATABASE_PASSWORD: cloudlens_password
       DATABASE_NAME: cloudlens_db
-      # Override API settings for container
-      API_HOST: 0.0.0.0
-      API_PORT: 8000
+    volumes:
+      - ./fastapi-backend/src:/app/src
+      - ./fastapi-backend/dbschema:/app/dbschema
+      - ./fastapi-backend/alembic:/app/alembic
+      - ./fastapi-backend/alembic.ini:/app/alembic.ini
     depends_on:
       postgres:
         condition: service_healthy
-    command:
-      [
-        'uv',
-        'run',
-        'uvicorn',
-        'src.main:app',
-        '--host',
-        '0.0.0.0',
-        '--port',
-        '8000',
-      ]
-    volumes:
-      - ./fastapi-backend/src:/app
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Frontend service
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: runner
     container_name: cloudlens-frontend
     ports:
       - '3000:3000'
@@ -78,26 +71,11 @@ services:
     env_file:
       - ./frontend/.env
     environment:
-      # Override backend URL for container networking
-      NEXT_PUBLIC_BACKEND_URL: http://backend:8000
-      # Set production environment
-      NODE_ENV: production
+      # Backend URL for container networking
+      NEXT_PUBLIC_BACKEND_URL: http://cloudlens-backend:80
     depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          'CMD',
-          'wget',
-          '--no-verbose',
-          '--tries=1',
-          '--spider',
-          'http://localhost:3000/',
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - backend
+    restart: unless-stopped
 
 # Network configuration
 networks:

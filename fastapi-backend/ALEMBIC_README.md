@@ -560,3 +560,19 @@ docker-compose exec server alembic merge -m "Merge feature" heads
 - **Models**: `dbschema/model.py`
 
 Remember to always prefix commands with `docker-compose exec server` when using Docker!
+
+````# Check users table
+docker-compose exec postgres psql -U cloudlens_user -d cloudlens_db -c "SELECT id, email, first_name, is_active, created_at FROM users;"
+
+# Check tenant table
+docker-compose exec postgres psql -U cloudlens_user -d cloudlens_db -c "SELECT id, name, email, created_at FROM tenant;"
+
+# Check cloud_scan table
+docker-compose exec postgres psql -U cloudlens_user -d cloudlens_db -c "SELECT id, name, status, cloud_provider, created_at FROM cloud_scan;"
+
+# Check service_scan_result table
+docker-compose exec postgres psql -U cloudlens_user -d cloudlens_db -c "SELECT id, service_name, region, created_at FROM service_scan_result LIMIT 5;"
+
+# Check regions table
+docker-compose exec postgres psql -U cloudlens_user -d cloudlens_db -c "SELECT * FROM regions;"```
+````

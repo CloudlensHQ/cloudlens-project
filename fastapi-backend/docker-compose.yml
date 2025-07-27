@@ -13,6 +13,7 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - database-network
+      - cloudlens-shared-network
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U cloudlens_user -d cloudlens_db']
       interval: 10s
@@ -23,6 +24,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: cloudlens-backend
     command: >
       /bin/bash -c "
       echo 'Waiting for database...' &&
@@ -50,12 +52,16 @@ services:
       - ./alembic.ini:/app/alembic.ini
     networks:
       - database-network
+      - cloudlens-shared-network
     depends_on:
       postgres:
         condition: service_healthy
 
 networks:
   database-network:
+    driver: bridge
+  cloudlens-shared-network:
+    name: cloudlens-shared-network
     driver: bridge
 
 volumes:
