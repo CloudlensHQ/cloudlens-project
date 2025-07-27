@@ -1,0 +1,24 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      /bin/bash -c "socat TCP-LISTEN:50051,fork,reuseaddr TCP:spicedb:50051 &
+      exec uvicorn src.main:app --proxy-headers --host 0.0.0.0 --port 80 --workers 2 --reload"
+    # command: uvicorn src.main:app --proxy-headers --host 0.0.0.0 --port 80 --reload
+    env_file:
+      - ./.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - 8000:80
+    volumes:
+      - ./src:/app/src
+      - ./dbschema:/app/dbschema
+    networks:
+      - database-network
+
+networks:
+  database-network:
+    driver: bridge
