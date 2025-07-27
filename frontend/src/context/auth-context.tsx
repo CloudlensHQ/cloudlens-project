@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   // Helper function to transform user data from snake_case to camelCase
-  const transformUserData = (userData: any) => ({
+  const transformUserData = useCallback((userData: any) => ({
     ...userData,
     onboardingCompleted:
       userData.onboarding_completed ?? userData.onboardingCompleted,
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updatedAt: userData.updated_at ?? userData.updatedAt,
     lastLogin: userData.last_login ?? userData.lastLogin,
     tenantId: userData.tenant_id ?? userData.tenantId,
-  });
+  }), []);
 
   // Clear auth data from both localStorage and cookies
   const clearAuthData = useCallback(() => {

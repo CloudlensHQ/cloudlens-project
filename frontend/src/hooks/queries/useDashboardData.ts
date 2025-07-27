@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@/lib/react-query'
 import { QUERY_KEYS } from '@/lib/query-keys'
 
@@ -137,11 +138,11 @@ export function useDashboardData(filters: DashboardRequest, options?: {
         staleTime: 5 * 60 * 1000, // 5 minutes
     })
 
-    const refresh = () => {
+    const refresh = useCallback(() => {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD.METRICS(filters) })
-    }
+    }, [queryClient, filters])
 
-    const prefetch = (newFilters: DashboardRequest) => {
+    const prefetch = useCallback((newFilters: DashboardRequest) => {
         queryClient.prefetchQuery({
             queryKey: QUERY_KEYS.DASHBOARD.METRICS(newFilters),
             queryFn: async () => {
@@ -170,7 +171,7 @@ export function useDashboardData(filters: DashboardRequest, options?: {
             },
             staleTime: 5 * 60 * 1000,
         })
-    }
+    }, [queryClient])
 
     return {
         ...query,
@@ -207,9 +208,9 @@ export function useRealtimeDashboard(filters: DashboardRequest, options?: {
         },
     })
 
-    const forceRefresh = () => {
+    const forceRefresh = useCallback(() => {
         refreshMutation.mutate()
-    }
+    }, [refreshMutation])
 
     return {
         ...query,
