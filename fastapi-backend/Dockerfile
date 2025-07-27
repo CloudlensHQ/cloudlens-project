@@ -26,8 +26,8 @@ WORKDIR /app
 # copy src directory
 COPY ./src /app/src
 
-# install socat
-RUN apt update && apt upgrade -y && apt install -y socat
+# install socat and netcat for database connectivity
+RUN apt update && apt upgrade -y && apt install -y socat netcat-openbsd
 
 # copy dbschema directory
 COPY ./dbschema /app/dbschema
