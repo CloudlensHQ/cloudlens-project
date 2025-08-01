@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # Database service
+  postgres:
+    image: docker.io/library/postgres:16
+    container_name: cloudlens-postgres
+    environment:
+      POSTGRES_DB: cloudlens_db
+      POSTGRES_USER: cloudlens_user
+      POSTGRES_PASSWORD: cloudlens_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./fastapi-backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - '5432:5432'
+    networks:
+      - cloudlens-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cloudlens_user -d cloudlens_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend service
+  backend:
+    build:
+      context: ./fastapi-backend
+      dockerfile: Dockerfile
+    container_name: cloudlens-backend
+    command: >
+      /bin/bash -c "
+      echo 'Waiting for database...' &&
+      while ! nc -z postgres 5432; do sleep 1; done &&
+      echo 'Database is ready!' &&
+      alembic upgrade head &&
+      exec uvicorn src.main:app --proxy-headers --host 0.0.0.0 --port 80 --workers 2 --reload"
+    ports:
+      - '8000:80'
+    networks:
+      - cloudlens-network
+    env_file:
+      - ./fastapi-backend/.env
+    environment:
+      # Database configuration for container networking
+      DATABASE_HOSTNAME: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: cloudlens_user
+      DATABASE_PASSWORD: cloudlens_password
+      DATABASE_NAME: cloudlens_db
+    volumes:
+      - ./fastapi-backend/src:/app/src
+      - ./fastapi-backend/dbschema:/app/dbschema
+      - ./fastapi-backend/alembic:/app/alembic
+      - ./fastapi-backend/alembic.ini:/app/alembic.ini
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+    container_name: cloudlens-frontend
+    ports:
+      - '3000:3000'
+    networks:
+      - cloudlens-network
+    env_file:
+      - ./frontend/.env
+    environment:
+      # Backend URL for container networking
+      NEXT_PUBLIC_BACKEND_URL: http://cloudlens-backend:80
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# Network configuration
+networks:
+  cloudlens-network:
+    driver: bridge
+
+# Volume configuration
+volumes:
+  postgres_data:
+    driver: local

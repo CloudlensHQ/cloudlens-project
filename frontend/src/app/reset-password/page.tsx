@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -16,7 +17,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Eye, EyeOff, Check, X, ArrowLeft } from "lucide-react";
 
-const FASTAPI_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const FASTAPI_BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 interface PasswordRequirement {
   label: string;
@@ -39,10 +41,10 @@ function ResetPasswordForm() {
   const [error, setError] = useState("");
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
+
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get("token");
 
   useEffect(() => {
     if (!token) {
@@ -72,7 +74,7 @@ function ResetPasswordForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!token) {
       setError("Invalid reset token");
       return;
@@ -89,13 +91,13 @@ function ResetPasswordForm() {
 
     try {
       const response = await fetch(`${FASTAPI_BASE_URL}/auth/reset-password`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           token: token,
-          new_password: password
+          new_password: password,
         }),
       });
 
@@ -105,7 +107,7 @@ function ResetPasswordForm() {
         setIsSuccess(true);
         // Redirect to sign in after 3 seconds
         setTimeout(() => {
-          router.push('/signin');
+          router.push("/signin");
         }, 3000);
       } else {
         setError(data.detail || "Failed to reset password. Please try again.");
@@ -137,15 +139,13 @@ function ResetPasswordForm() {
                   You can now sign in with your new password.
                 </AlertDescription>
               </Alert>
-              
+
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-4">
                   Redirecting to sign in page...
                 </p>
                 <Link href="/signin">
-                  <Button className="w-full">
-                    Go to Sign In
-                  </Button>
+                  <Button className="w-full">Go to Sign In</Button>
                 </Link>
               </div>
             </CardContent>
@@ -166,17 +166,16 @@ function ResetPasswordForm() {
             <CardContent>
               <Alert variant="destructive">
                 <AlertDescription>
-                  This password reset link is invalid or has expired. Please request a new password reset.
+                  This password reset link is invalid or has expired. Please
+                  request a new password reset.
                 </AlertDescription>
               </Alert>
-              
+
               <div className="mt-6 space-y-3">
                 <Link href="/forgot-password">
-                  <Button className="w-full">
-                    Request New Reset Link
-                  </Button>
+                  <Button className="w-full">Request New Reset Link</Button>
                 </Link>
-                
+
                 <Link href="/signin">
                   <Button variant="outline" className="w-full">
                     <ArrowLeft className="mr-2 h-4 w-4" />
@@ -309,9 +308,7 @@ function ResetPasswordForm() {
                   </button>
                 </div>
                 {confirmPassword && password !== confirmPassword && (
-                  <p className="text-sm text-red-600">
-                    Passwords do not match
-                  </p>
+                  <p className="text-sm text-red-600">Passwords do not match</p>
                 )}
               </div>
 
@@ -343,8 +340,14 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <ResetPasswordForm />
     </Suspense>
   );
-} 
+}

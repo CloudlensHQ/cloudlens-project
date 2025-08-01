@@ -1,0 +1,21 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: cloudlens-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=http://cloudlens-backend:80
+    env_file:
+      - ./.env
+    networks:
+      - cloudlens-shared-network
+    restart: unless-stopped
+
+networks:
+  cloudlens-shared-network:
+    name: cloudlens-shared-network
+    driver: bridge

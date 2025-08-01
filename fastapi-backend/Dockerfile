@@ -8,7 +8,7 @@ ENV BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Enable bytecode compilation
-# ENV UV_COMPILE_BYTECODE=1
+ENV UV_COMPILE_BYTECODE=1
 
 WORKDIR /opt
 
@@ -20,20 +20,23 @@ ENV VIRTUAL_ENV=/opt/venv
 
 RUN uv sync --frozen --no-cache
 
-# RUN pip install playwright
-
-# RUN playwright install --with-deps chromium
-
+# application directory
 WORKDIR /app
 
-COPY ./src /app
+# copy src directory
+COPY ./src /app/src
 
-RUN apt update && apt upgrade -y && apt install -y socat
+# install socat and netcat for database connectivity
+RUN apt update && apt upgrade -y && apt install -y socat netcat-openbsd
 
-COPY ./gel.toml /gel.toml
-COPY ./dbschema /dbschema
+# copy dbschema directory
+COPY ./dbschema /app/dbschema
 
+# set path
 ENV PATH="/opt/.venv/bin:$PATH"
 
-# # Reset the entrypoint, don't invoke `uv`
-# ENTRYPOINT []
+# install curl for health checks
+RUN apt update && apt install -y curl
+
+# # Default command to run the application
+# CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

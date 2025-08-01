@@ -39,7 +39,7 @@ const steps = [
   {
     title: "Welcome to CloudLens",
     description:
-      "Let's get you set up with the best cloud security experience.",
+      "Let&apos;s get you set up with the best cloud security experience.",
     icon: CheckCircle,
   },
   {
@@ -164,8 +164,8 @@ export default function OnboardingPage() {
                 Welcome to CloudLens, {user?.firstName}!
               </h3>
               <p className="mt-2 text-sm text-gray-600">
-                We're excited to help you secure your cloud infrastructure. This
-                quick setup will help us customize your experience.
+                We&apos;re excited to help you secure your cloud infrastructure.
+                This quick setup will help us customize your experience.
               </p>
             </div>
           </div>

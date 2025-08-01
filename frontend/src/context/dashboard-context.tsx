@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, {
@@ -261,8 +262,8 @@ export function DashboardProvider({
     filters: { ...initialState.filters, tenant_id: initialTenantId },
   });
 
-  // Computed values
-  const getFilteredServiceMetrics = () => {
+  // Computed values with useCallback to prevent infinite loops
+  const getFilteredServiceMetrics = useCallback(() => {
     if (!state.data) return [];
 
     let metrics = state.data.service_metrics;
@@ -274,9 +275,9 @@ export function DashboardProvider({
     }
 
     return metrics;
-  };
+  }, [state.data, state.selectedServices]);
 
-  const getFilteredRegionMetrics = () => {
+  const getFilteredRegionMetrics = useCallback(() => {
     if (!state.data) return [];
 
     let metrics = state.data.region_metrics;
@@ -286,9 +287,9 @@ export function DashboardProvider({
     }
 
     return metrics;
-  };
+  }, [state.data, state.selectedRegions]);
 
-  const getFilteredTopResources = () => {
+  const getFilteredTopResources = useCallback(() => {
     if (!state.data) return [];
 
     let resources = state.data.top_resources;
@@ -300,9 +301,9 @@ export function DashboardProvider({
     }
 
     return resources.sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0));
-  };
+  }, [state.data, state.selectedRegions]);
 
-  const getFilteredAlerts = () => {
+  const getFilteredAlerts = useCallback(() => {
     if (!state.data) return [];
 
     let alerts = state.data.alerts;
@@ -312,9 +313,9 @@ export function DashboardProvider({
     }
 
     return alerts;
-  };
+  }, [state.data, state.selectedRegions]);
 
-  const getSecurityScore = () => {
+  const getSecurityScore = useCallback(() => {
     if (!state.data) return 0;
 
     const { security_metrics } = state.data;
@@ -353,13 +354,13 @@ export function DashboardProvider({
     }
 
     return Math.max(0, Math.round(score));
-  };
+  }, [state.data]);
 
-  const getCriticalAlerts = () => {
+  const getCriticalAlerts = useCallback(() => {
     if (!state.data) return [];
 
     return state.data.alerts.filter((alert) => alert.severity === "critical");
-  };
+  }, [state.data]);
 
   // Action creators with useCallback to prevent infinite loops
   const setLoading = useCallback(

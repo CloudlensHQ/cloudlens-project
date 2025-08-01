@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@/lib/react-query'
 import { QUERY_KEYS } from '@/lib/query-keys'
-import { DashboardData } from '@/context/dashboard-context'
 
 // Types for API requests
 interface DashboardRequest {
@@ -137,11 +138,11 @@ export function useDashboardData(filters: DashboardRequest, options?: {
         staleTime: 5 * 60 * 1000, // 5 minutes
     })
 
-    const refresh = () => {
+    const refresh = useCallback(() => {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD.METRICS(filters) })
-    }
+    }, [queryClient, filters])
 
-    const prefetch = (newFilters: DashboardRequest) => {
+    const prefetch = useCallback((newFilters: DashboardRequest) => {
         queryClient.prefetchQuery({
             queryKey: QUERY_KEYS.DASHBOARD.METRICS(newFilters),
             queryFn: async () => {
@@ -170,7 +171,7 @@ export function useDashboardData(filters: DashboardRequest, options?: {
             },
             staleTime: 5 * 60 * 1000,
         })
-    }
+    }, [queryClient])
 
     return {
         ...query,
@@ -207,9 +208,9 @@ export function useRealtimeDashboard(filters: DashboardRequest, options?: {
         },
     })
 
-    const forceRefresh = () => {
+    const forceRefresh = useCallback(() => {
         refreshMutation.mutate()
-    }
+    }, [refreshMutation])
 
     return {
         ...query,
@@ -304,11 +305,11 @@ export function useUpdateDashboardFilters() {
                 queryFn: async () => {
                     // Get access token from localStorage for authorization
                     const accessToken = localStorage.getItem('cloudlens_access_token');
-                    
+
                     const headers: Record<string, string> = {
                         'Content-Type': 'application/json',
                     };
-                    
+
                     if (accessToken) {
                         headers['Authorization'] = `Bearer ${accessToken}`;
                     }
@@ -337,17 +338,17 @@ export function useUpdateDashboardFilters() {
 }
 
 // Utility function to invalidate all dashboard queries
-export function invalidateAllDashboardQueries() {
+export function useInvalidateAllDashboardQueries() {
     const queryClient = useQueryClient()
-    return queryClient.invalidateQueries({
+    return () => queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.DASHBOARD.ALL
     })
 }
 
 // Utility function to clear dashboard cache
-export function clearDashboardCache() {
+export function useClearDashboardCache() {
     const queryClient = useQueryClient()
-    return queryClient.removeQueries({
+    return () => queryClient.removeQueries({
         queryKey: QUERY_KEYS.DASHBOARD.ALL
     })
 }

@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: docker.io/library/postgres:16
+    container_name: cloudlens-postgres
+    environment:
+      POSTGRES_DB: cloudlens_db
+      POSTGRES_USER: cloudlens_user
+      POSTGRES_PASSWORD: cloudlens_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - database-network
+      - cloudlens-shared-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cloudlens_user -d cloudlens_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cloudlens-backend
+    command: >
+      /bin/bash -c "
+      echo 'Waiting for database...' &&
+      while ! nc -z postgres 5432; do sleep 1; done &&
+      echo 'Database is ready!' &&
+      alembic upgrade head &&
+      socat TCP-LISTEN:50051,fork,reuseaddr TCP:spicedb:50051 &
+      exec uvicorn src.main:app --proxy-headers --host 0.0.0.0 --port 80 --workers 2 --reload"
+    # command: uvicorn src.main:app --proxy-headers --host 0.0.0.0 --port 80 --reload
+    env_file:
+      - ./.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_HOSTNAME=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=cloudlens_db
+      - DATABASE_USERNAME=cloudlens_user
+      - DATABASE_PASSWORD=cloudlens_password
+    ports:
+      - 8000:80
+    volumes:
+      - ./src:/app/src
+      - ./dbschema:/app/dbschema
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    networks:
+      - database-network
+      - cloudlens-shared-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  database-network:
+    driver: bridge
+  cloudlens-shared-network:
+    name: cloudlens-shared-network
+    driver: bridge
+
+volumes:
+  postgres_data:

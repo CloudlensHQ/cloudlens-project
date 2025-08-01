@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useCallback } from "react";
 
 export interface Region {
   id: string;
@@ -49,31 +49,38 @@ export const RegionsProvider: React.FC<RegionsProviderProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getRegionsByProvider = (provider: string): Region[] => {
-    return regions.filter(
-      (region) => region.cloud_provider.toLowerCase() === provider.toLowerCase()
-    );
-  };
-
-  const getRegionById = (id: string): Region | undefined => {
-    return regions.find((region) => region.id === id);
-  };
-
-  const getRegionByName = (
-    name: string,
-    provider?: string
-  ): Region | undefined => {
-    return regions.find((region) => {
-      const nameMatch = region.name.toLowerCase() === name.toLowerCase();
-      if (provider) {
-        return (
-          nameMatch &&
+  const getRegionsByProvider = useCallback(
+    (provider: string): Region[] => {
+      return regions.filter(
+        (region) =>
           region.cloud_provider.toLowerCase() === provider.toLowerCase()
-        );
-      }
-      return nameMatch;
-    });
-  };
+      );
+    },
+    [regions]
+  );
+
+  const getRegionById = useCallback(
+    (id: string): Region | undefined => {
+      return regions.find((region) => region.id === id);
+    },
+    [regions]
+  );
+
+  const getRegionByName = useCallback(
+    (name: string, provider?: string): Region | undefined => {
+      return regions.find((region) => {
+        const nameMatch = region.name.toLowerCase() === name.toLowerCase();
+        if (provider) {
+          return (
+            nameMatch &&
+            region.cloud_provider.toLowerCase() === provider.toLowerCase()
+          );
+        }
+        return nameMatch;
+      });
+    },
+    [regions]
+  );
 
   const value: RegionsContextType = {
     regions,

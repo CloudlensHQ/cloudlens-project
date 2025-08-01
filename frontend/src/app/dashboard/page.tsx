@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -11,23 +12,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from "@/components/ui/chart";
 import {
   BarChart,
@@ -38,30 +29,17 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
   ResponsiveContainer,
   AreaChart,
   Area,
-  Tooltip,
-  Legend,
 } from "recharts";
 import {
   Shield,
   Cloud,
   Server,
-  Database,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Activity,
   RefreshCw,
-  Filter,
   Download,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
   MapPin,
   Zap,
 } from "lucide-react";
@@ -644,7 +622,7 @@ function DashboardContent() {
     if (dashboardData && !isLoading) {
       setData(dashboardData);
     }
-  }, [dashboardData, isLoading]); // Only update when data changes and loading is complete
+  }, [dashboardData, isLoading, setData]); // Only update when data changes and loading is complete
 
   const handleRefresh = () => {
     refresh();
@@ -748,7 +726,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  
+
   // Don't render if user is not authenticated or doesn't have tenant ID
   if (!user?.tenantId) {
     return (
