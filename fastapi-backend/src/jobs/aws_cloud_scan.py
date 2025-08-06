@@ -382,26 +382,31 @@ def extract_credentials(event):
         log_error(f"Failed to extract credentials: {str(e)}")
         raise
 
-def save_scan_results_to_db(tenant_id, scan_results):
-    """Save scan results to database"""
+def save_scan_results_to_db(tenant_id, scan_results, scan_id):
+    """Update scan record and save service scan results to database"""
     try:
         with get_db(application_name='lambda-save-scan') as db:
-            # Create a new cloud scan record
-            cloud_scan = CloudScan(
-                id=uuid.uuid4(),
-                tenant_id=tenant_id,
-                name="AWS Security Scan",
-                status="COMPLETED",  # Fixed: Now using uppercase for enum value
-                cloud_provider="AWS",  # Fixed: Use uppercase for the cloud_provider enum
-                cloud_scan_metadata={
-                    "total_regions_scanned": len(scan_results),
-                    "scan_timestamp": datetime.now().isoformat()
-                }
-            )
-            db.add(cloud_scan)
-            db.flush()  # Flush to get the ID without committing
+            # Fetch the existing cloud scan record by scan_id
+            cloud_scan = db.query(CloudScan).filter(CloudScan.id == scan_id).first()
+            if not cloud_scan:
+                raise Exception(f"CloudScan record with id {scan_id} not found")
+
+            # Update status to COMPLETED
+            cloud_scan.status = "COMPLETED"
+
+            # Update or merge cloud_scan_metadata
+            existing_metadata = cloud_scan.cloud_scan_metadata or {}
+            existing_metadata.update({
+                "total_regions_scanned": len(scan_results),
+                "scan_timestamp": datetime.now().isoformat()
+            })
+            cloud_scan.cloud_scan_metadata = existing_metadata
+
+            db.flush()  # Flush to persist changes before adding service results
+
             
-            scan_id = cloud_scan.id
+            
+            # scan_id = cloud_scan.id
             
             # Create service scan results
             for region, region_results in scan_results.items():
@@ -487,7 +492,7 @@ def process_scan_request(event):
             })
         }
     
-def process_scan_request_v2(aws_access_key, aws_secret_key, aws_session_token, tenant_id, excluded_regions, scan_options: int = 840):
+def process_scan_request_v2(aws_access_key, aws_secret_key, aws_session_token, tenant_id, excluded_regions, scan_id, scan_options: int = 840):
     try:
         # Get list of ALL AWS regions
         ec2_client = initialize_aws_client(aws_access_key, aws_secret_key, service='ec2', aws_session_token=aws_session_token)
@@ -500,7 +505,7 @@ def process_scan_request_v2(aws_access_key, aws_secret_key, aws_session_token, t
                 (f" (excluding {len(excluded_regions)} regions)" if excluded_regions else ""))
         
         # Add timeout handling for very large accounts
-        scan_timeout = scan_options.get('timeout_seconds', 840)  # 14 minutes default for Lambda
+        scan_timeout = scan_options  # scan_options is the timeout in seconds
         start_time = datetime.now()
         
         # Scan regions one by one
@@ -517,7 +522,7 @@ def process_scan_request_v2(aws_access_key, aws_secret_key, aws_session_token, t
             scan_results[result['region']] = result
         
         # Save results to database
-        scan_id = save_scan_results_to_db(tenant_id, scan_results)
+        scan_id = save_scan_results_to_db(tenant_id, scan_results, scan_id)
         
         return {
             'statusCode': 200,
@@ -531,13 +536,7 @@ def process_scan_request_v2(aws_access_key, aws_secret_key, aws_session_token, t
         }
     except Exception as e:
         log_error(f"Error processing inventory scan: {str(e)}\n{traceback.format_exc()}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({
-                'error': 'Failed to process inventory scan',
-                'message': str(e)
-            })
-        }
+        raise Exception(f"Error processing inventory scan: {str(e)}")
 
 def lambda_handler(event, context):
     """Main Lambda handler function"""

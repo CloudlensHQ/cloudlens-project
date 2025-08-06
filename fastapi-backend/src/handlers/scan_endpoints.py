@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-from dbschema.db_connector import get_db_session
+from dbschema.db_connector import get_db_session, get_db
 from dbschema.model import CloudScan, ServiceScanResult, User, Tenant
 from src.middleware.auth import get_tenant_scoped_context, get_current_context, TenantContext
 from src.jobs.aws_cloud_scan import process_scan_request_v2
@@ -128,6 +128,7 @@ async def aws_cloud_scan(
             aws_access_key = encryption_service.decrypt(request.encrypted_aws_access_key)
             aws_secret_key = encryption_service.decrypt(request.encrypted_aws_secret_key)
             aws_session_token = None
+
             
             if request.encrypted_aws_session_token:
                 aws_session_token = encryption_service.decrypt(request.encrypted_aws_session_token)
@@ -187,7 +188,9 @@ async def aws_cloud_scan(
                 cloud_scan_metadata={
                     "excluded_regions": request.excluded_regions or [],
                     "scan_options": request.scan_options,
-                    "initiated_by": str(context.user_id)
+                    "initiated_by": str(context.user_id),
+                    "scan_timestamp": datetime.now().isoformat(),
+                    "total_regions_scanned": 0
                 }
             )
             db.add(cloud_scan)
@@ -226,6 +229,14 @@ async def aws_cloud_scan(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create scan record"
             )
+        
+        # return ScanResponse(
+        #     scan_id=scan_id,
+        #     message="AWS cloud scan initiated successfully",
+        #     status="IN_PROGRESS",
+        #     timestamp=datetime.now().isoformat(),
+        #     tenant_id=str(context.tenant_id)
+        # ) 
         
         background_tasks.add_task(
             execute_aws_scan,
@@ -317,6 +328,7 @@ async def execute_aws_scan(
             aws_session_token=aws_session_token,
             tenant_id=tenant_id,
             excluded_regions=excluded_regions,
+            scan_id=scan_id,
             scan_options=scan_options
         )
         
@@ -328,32 +340,7 @@ async def execute_aws_scan(
             }
         )
         
-        # Update scan status to completed
-        logger.info("Updating scan status to COMPLETED", extra={"scan_id": scan_id})
         
-        with get_db_session(application_name='background-scan-update') as db:
-            scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
-            if scan:
-                scan.status = "COMPLETED"
-                scan.cloud_scan_metadata.update({
-                    "completion_timestamp": datetime.now().isoformat(),
-                    "scan_result": "SUCCESS"
-                })
-                db.commit()
-                
-                logger.info(
-                    "Scan status updated to COMPLETED",
-                    extra={
-                        "scan_id": scan_id,
-                        "tenant_id": tenant_id,
-                        "final_status": "COMPLETED"
-                    }
-                )
-            else:
-                logger.warning(
-                    "Scan record not found for status update",
-                    extra={"scan_id": scan_id}
-                )
                 
     except Exception as e:
         logger.error(
@@ -369,7 +356,7 @@ async def execute_aws_scan(
         try:
             logger.info("Updating scan status to FAILED", extra={"scan_id": scan_id})
             
-            with get_db_session(application_name='background-scan-error') as db:
+            with get_db(application_name='background-scan-error') as db:
                 scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
                 if scan:
                     scan.status = "FAILED"
