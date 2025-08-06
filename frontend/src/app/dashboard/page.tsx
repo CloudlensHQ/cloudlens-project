@@ -47,6 +47,7 @@ import {
 import { DashboardProvider, useDashboard } from "@/context/dashboard-context";
 import { useDashboardData } from "@/hooks/queries/useDashboardData";
 import { useAuth } from "@/context/auth-context";
+import { exportDashboardToPDF } from "@/lib/utils/pdf-export";
 
 // Mock tenant ID for now - in real app this would come from auth
 // const MOCK_TENANT_ID = "65556962-a76c-46b7-9a90-b3589c240733";
@@ -597,8 +598,9 @@ function ResourceTrendsChart() {
 }
 
 function DashboardContent() {
-  const { state, setFilters, refreshData, setData } = useDashboard();
-  const { filters } = state;
+  const { state, setFilters, refreshData, setData, getSecurityScore } =
+    useDashboard();
+  const { filters, data } = state;
 
   const {
     data: dashboardData,
@@ -627,6 +629,58 @@ function DashboardContent() {
   const handleRefresh = () => {
     refresh();
     refreshData();
+  };
+
+  const handleExport = async () => {
+    if (!data) return;
+
+    // Show loading state
+    const button = document.querySelector(
+      "[data-export-btn]"
+    ) as HTMLButtonElement;
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Generating PDF...";
+    }
+
+    try {
+      const exportData = {
+        scanOverview: {
+          totalScans: data.scan_overview.total_scans,
+          regionsScanned: data.scan_overview.total_regions_scanned,
+          servicesMonitored: data.scan_overview.total_services_scanned,
+          criticalAlerts: data.alerts.filter((a) => a.severity === "critical")
+            .length,
+        },
+        securityScore: getSecurityScore(),
+        alerts: data.alerts.map((alert) => ({
+          severity: alert.severity,
+          message: alert.message,
+          resource: alert.resource,
+          region: alert.region,
+        })),
+        serviceMetrics: data.service_metrics.map((metric) => ({
+          serviceName: metric.service_name,
+          resourceCount: metric.resource_count,
+        })),
+        regionMetrics: data.region_metrics.map((metric) => ({
+          region: metric.region,
+          resourceCount: metric.resource_count,
+        })),
+      };
+
+      await exportDashboardToPDF(exportData);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      // Reset button state
+      if (button) {
+        button.disabled = false;
+        button.innerHTML =
+          '<svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>Export';
+      }
+    }
   };
 
   if (isLoading) {
@@ -672,7 +726,12 @@ function DashboardContent() {
             />
             Refresh
           </Button>
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={!data}
+            data-export-btn
+          >
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>

@@ -202,7 +202,7 @@ async def aws_cloud_scan(
                     "scan_options": request.scan_options,
                     "initiated_by": str(context.user_id),
                     "scan_timestamp": datetime.now().isoformat(),
-                    "total_regions_scanned": 0
+                    "total_regions_scanned": 17
                 }
             )
             db.add(cloud_scan)
