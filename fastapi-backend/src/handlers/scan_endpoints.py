@@ -5,13 +5,25 @@ from typing import List, Optional, Dict, Any, Tuple
 import uuid
 import json
 from datetime import datetime
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 import logging
 
 logger = logging.getLogger(__name__)
 
+# Create a thread pool executor for CPU-bound and I/O-bound background tasks
+# This prevents blocking the FastAPI event loop
+thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="scan-worker")
 
-from dbschema.db_connector import get_db_session
+def cleanup_thread_pool():
+    """Cleanup function to properly shutdown the thread pool"""
+    logger.info("Shutting down thread pool executor")
+    thread_pool.shutdown(wait=True)
+    logger.info("Thread pool executor shutdown complete")
+
+from dbschema.db_connector import get_db_session, get_db
 from dbschema.model import CloudScan, ServiceScanResult, User, Tenant
 from src.middleware.auth import get_tenant_scoped_context, get_current_context, TenantContext
 from src.jobs.aws_cloud_scan import process_scan_request_v2
@@ -128,6 +140,7 @@ async def aws_cloud_scan(
             aws_access_key = encryption_service.decrypt(request.encrypted_aws_access_key)
             aws_secret_key = encryption_service.decrypt(request.encrypted_aws_secret_key)
             aws_session_token = None
+
             
             if request.encrypted_aws_session_token:
                 aws_session_token = encryption_service.decrypt(request.encrypted_aws_session_token)
@@ -187,7 +200,9 @@ async def aws_cloud_scan(
                 cloud_scan_metadata={
                     "excluded_regions": request.excluded_regions or [],
                     "scan_options": request.scan_options,
-                    "initiated_by": str(context.user_id)
+                    "initiated_by": str(context.user_id),
+                    "scan_timestamp": datetime.now().isoformat(),
+                    "total_regions_scanned": 0
                 }
             )
             db.add(cloud_scan)
@@ -226,6 +241,7 @@ async def aws_cloud_scan(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create scan record"
             )
+        
         
         background_tasks.add_task(
             execute_aws_scan,
@@ -271,6 +287,54 @@ async def aws_cloud_scan(
             detail=f"Unexpected error occurred: {str(e)}"
         )
 
+def _run_aws_scan_sync(
+    scan_id: str,
+    aws_access_key: str,
+    aws_secret_key: str,
+    aws_session_token: Optional[str],
+    tenant_id: str,
+    excluded_regions: List[str],
+    scan_options: int
+) -> Dict[str, Any]:
+    """
+    Synchronous wrapper for the AWS scan process.
+    This runs in a thread pool to prevent blocking the event loop.
+    """
+    try:
+        logger.info(
+            "Executing AWS scan process in thread pool",
+            extra={
+                "scan_id": scan_id,
+                "thread_name": threading.current_thread().name
+            }
+        )
+        
+        # Execute the actual scan (this is the blocking operation)
+        result = process_scan_request_v2(
+            aws_access_key=aws_access_key,
+            aws_secret_key=aws_secret_key,
+            aws_session_token=aws_session_token,
+            tenant_id=tenant_id,
+            excluded_regions=excluded_regions,
+            scan_id=scan_id,
+            scan_options=scan_options
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(
+            "AWS scan execution failed in thread pool",
+            extra={
+                "scan_id": scan_id,
+                "tenant_id": tenant_id,
+                "error": str(e),
+                "thread_name": threading.current_thread().name
+            }
+        )
+        raise
+
+
 async def execute_aws_scan(
     scan_id: str,
     aws_access_key: str,
@@ -281,7 +345,8 @@ async def execute_aws_scan(
     scan_options: int
 ):
     """
-    Execute the AWS scan in the background and update the scan status.
+    Execute the AWS scan in the background using a thread pool.
+    This prevents blocking the FastAPI event loop.
     
     Args:
         scan_id: Unique identifier for the scan
@@ -302,22 +367,20 @@ async def execute_aws_scan(
         }
     )
 
-    
     try:
-
-        
-        # Execute the actual scan
-        logger.info("Executing AWS scan process", extra={"scan_id": scan_id})
-
-
-        
-        result = process_scan_request_v2(
-            aws_access_key=aws_access_key,
-            aws_secret_key=aws_secret_key,
-            aws_session_token=aws_session_token,
-            tenant_id=tenant_id,
-            excluded_regions=excluded_regions,
-            scan_options=scan_options
+        # Run the blocking scan operation in a thread pool
+        # This allows other API requests to be processed while the scan runs
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            thread_pool,
+            _run_aws_scan_sync,
+            scan_id,
+            aws_access_key,
+            aws_secret_key,
+            aws_session_token,
+            tenant_id,
+            excluded_regions,
+            scan_options
         )
         
         logger.info(
@@ -328,32 +391,7 @@ async def execute_aws_scan(
             }
         )
         
-        # Update scan status to completed
-        logger.info("Updating scan status to COMPLETED", extra={"scan_id": scan_id})
         
-        with get_db_session(application_name='background-scan-update') as db:
-            scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
-            if scan:
-                scan.status = "COMPLETED"
-                scan.cloud_scan_metadata.update({
-                    "completion_timestamp": datetime.now().isoformat(),
-                    "scan_result": "SUCCESS"
-                })
-                db.commit()
-                
-                logger.info(
-                    "Scan status updated to COMPLETED",
-                    extra={
-                        "scan_id": scan_id,
-                        "tenant_id": tenant_id,
-                        "final_status": "COMPLETED"
-                    }
-                )
-            else:
-                logger.warning(
-                    "Scan record not found for status update",
-                    extra={"scan_id": scan_id}
-                )
                 
     except Exception as e:
         logger.error(
@@ -365,45 +403,64 @@ async def execute_aws_scan(
             }
         )
         
-        # Update scan status to failed
+        # Update scan status to failed using thread pool to avoid blocking
         try:
             logger.info("Updating scan status to FAILED", extra={"scan_id": scan_id})
             
-            with get_db_session(application_name='background-scan-error') as db:
-                scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
-                if scan:
-                    scan.status = "FAILED"
-                    scan.cloud_scan_metadata.update({
-                        "completion_timestamp": datetime.now().isoformat(),
-                        "scan_result": "FAILED",
-                        "error_message": str(e)
-                    })
-                    db.commit()
-                    
-                    logger.info(
-                        "Scan status updated to FAILED",
+            def _update_scan_status_to_failed():
+                """Update scan status in database - runs in thread pool"""
+                try:
+                    with get_db(application_name='background-scan-error') as db:
+                        scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
+                        if scan:
+                            scan.status = "FAILED"
+                            scan.cloud_scan_metadata.update({
+                                "completion_timestamp": datetime.now().isoformat(),
+                                "scan_result": "FAILED",
+                                "error_message": str(e)
+                            })
+                            db.commit()
+                            
+                            logger.info(
+                                "Scan status updated to FAILED",
+                                extra={
+                                    "scan_id": scan_id,
+                                    "tenant_id": tenant_id,
+                                    "final_status": "FAILED"
+                                }
+                            )
+                            return True
+                        else:
+                            logger.warning(
+                                "Scan record not found for error status update",
+                                extra={"scan_id": scan_id}
+                            )
+                            return False
+                except Exception as db_error:
+                    logger.error(
+                        "Failed to update scan status to FAILED",
                         extra={
                             "scan_id": scan_id,
-                            "tenant_id": tenant_id,
-                            "final_status": "FAILED"
+                            "db_error": str(db_error),
+                            "original_error": str(e)
                         }
                     )
-                else:
-                    logger.warning(
-                        "Scan record not found for error status update",
-                        extra={"scan_id": scan_id}
-                    )
+                    print(f"Failed to update scan status for {scan_id}: {str(db_error)}")
+                    raise db_error
+            
+            # Run database update in thread pool
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(thread_pool, _update_scan_status_to_failed)
                     
         except Exception as db_error:
             logger.error(
-                "Failed to update scan status to FAILED",
+                "Failed to update scan status to FAILED in thread pool",
                 extra={
                     "scan_id": scan_id,
                     "db_error": str(db_error),
                     "original_error": str(e)
                 }
             )
-            print(f"Failed to update scan status for {scan_id}: {str(db_error)}")
         
         print(f"Scan {scan_id} failed: {str(e)}")
 
