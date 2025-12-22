@@ -230,10 +230,3 @@ For production deployment, consider:
 5. **Set up CI/CD pipelines** for automated deployments
 6. **Use secrets management** for sensitive environment variables
 
-## 📝 License
-
-[Your License Here]
-
-## 🤝 Contributing
-
-[Contributing Guidelines Here]
