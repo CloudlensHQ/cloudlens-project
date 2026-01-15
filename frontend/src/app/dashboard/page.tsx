@@ -119,12 +119,12 @@ function DashboardOverview() {
       {overviewCards.map((card, index) => {
         const Icon = card.icon;
         return (
-          <Card key={index}>
+          <Card key={index} className="transition-theme animate-scale-in hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {card.title}
               </CardTitle>
-              <div className={`rounded-full p-2 ${card.bgColor}`}>
+              <div className={`rounded-xl p-2 ${card.bgColor} shadow-sm`}>
                 <Icon className={`h-4 w-4 ${card.color}`} />
               </div>
             </CardHeader>
@@ -158,7 +158,7 @@ function SecurityScoreCard() {
   };
 
   return (
-    <Card>
+    <Card className="transition-theme animate-scale-in hover:shadow-md">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
@@ -207,7 +207,7 @@ function ResourceDistributionChart() {
   }));
 
   return (
-    <Card>
+    <Card className="transition-theme animate-scale-in hover:shadow-md">
       <CardHeader>
         <CardTitle>Resource Distribution</CardTitle>
         <CardDescription>Resources across AWS services</CardDescription>
@@ -252,7 +252,7 @@ function RegionalDistributionChart() {
   }));
 
   return (
-    <Card>
+    <Card className="transition-theme animate-scale-in hover:shadow-md">
       <CardHeader>
         <CardTitle>Regional Distribution</CardTitle>
         <CardDescription>Resources by AWS region</CardDescription>
@@ -350,7 +350,7 @@ function SecurityMetricsChart() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="transition-theme animate-scale-in hover:shadow-md">
         <CardHeader>
           <CardTitle className="text-sm">S3 Encryption</CardTitle>
         </CardHeader>
@@ -377,7 +377,7 @@ function SecurityMetricsChart() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="transition-theme animate-scale-in hover:shadow-md">
         <CardHeader>
           <CardTitle className="text-sm">IMDS Version</CardTitle>
         </CardHeader>
@@ -432,7 +432,7 @@ function AlertsPanel() {
   };
 
   return (
-    <Card>
+    <Card className="transition-theme animate-scale-in hover:shadow-md">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5" />
@@ -448,7 +448,7 @@ function AlertsPanel() {
             {allAlerts.map((alert, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 p-3 border rounded-lg"
+                className="flex items-start gap-3 p-3 border rounded-lg transition-theme hover:bg-muted/40"
               >
                 <AlertTriangle
                   className={`h-4 w-4 mt-1 ${
@@ -497,7 +497,7 @@ function TopResourcesPanel() {
   };
 
   return (
-    <Card>
+    <Card className="transition-theme animate-scale-in hover:shadow-md">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Zap className="h-5 w-5" />
@@ -513,7 +513,7 @@ function TopResourcesPanel() {
             {topResources.map((resource, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 border rounded-lg"
+                className="flex items-center justify-between p-3 border rounded-lg transition-theme hover:bg-muted/40"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -548,7 +548,7 @@ function ResourceTrendsChart() {
   const trendData = data.resource_trends;
 
   return (
-    <Card>
+    <Card className="transition-theme animate-scale-in hover:shadow-md">
       <CardHeader>
         <CardTitle>Resource Trends</CardTitle>
         <CardDescription>Resource counts over time</CardDescription>
@@ -708,7 +708,7 @@ function DashboardContent() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6 animate-scale-in">
         <div>
           <h1 className="text-3xl font-bold">Cloud Security Dashboard</h1>
           <p className="text-muted-foreground">

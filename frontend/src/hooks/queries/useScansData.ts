@@ -4,19 +4,23 @@ import { QUERY_KEYS } from '@/lib/query-keys'
 export interface Scan {
     scan_id: string
     name: string
-    status: 'PENDING' | 'COMPLETED'
+    status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
     cloud_provider: string
     created_by: string
     metadata: {
         scan_timestamp: string
         total_regions_scanned: number
+        progress_percentage?: number
+        regions_completed?: number
+        total_regions?: number
+        current_region?: string | null
     }
     created_at: string
     updated_at: string
 }
 
 export interface ScanFilters {
-    status?: 'PENDING' | 'COMPLETED'
+    status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
     cloud_provider?: string
     limit?: number
     offset?: number
@@ -54,8 +58,9 @@ export const useScansData = (filters: ScanFilters = {}) => {
             ...filters,
         }),
         queryFn: () => fetchScans(filters),
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 2 * 1000, // 2 seconds for live progress tracking
         refetchOnWindowFocus: false,
+        refetchInterval: 3 * 1000, // Poll every 3 seconds for progress updates
     })
 }
 

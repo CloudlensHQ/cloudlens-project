@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState } from "react";
-import { Cloud, Zap, Lock, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Cloud, Zap, Lock, Eye, EyeOff, AlertTriangle, CheckCircle } from "lucide-react";
+import { CloudProviderLogo } from "@/components/CloudProviderLogo";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,21 +41,21 @@ const CloudProviders = [
   {
     id: "aws",
     name: "Amazon Web Services",
-    icon: "☁️",
+    provider: "AWS",
     available: true,
     description: "Comprehensive AWS security scanning",
   },
   {
     id: "azure",
     name: "Microsoft Azure",
-    icon: "🔷",
+    provider: "AZURE",
     available: false,
     description: "Azure security scanning (coming soon)",
   },
   {
     id: "gcp",
     name: "Google Cloud Platform",
-    icon: "🟡",
+    provider: "GCP",
     available: false,
     description: "GCP security scanning (coming soon)",
   },
@@ -74,6 +75,7 @@ export default function NewScanModal({
   const [scanConfig, setScanConfig] = useState<ScanConfig>({
     scanName: "",
   });
+  const [step, setStep] = useState<1 | 2>(1);
   const [showSecrets, setShowSecrets] = useState({
     secretKey: false,
     sessionToken: false,
@@ -83,6 +85,7 @@ export default function NewScanModal({
 
   const handleProviderSelect = (providerId: string) => {
     setSelectedProvider(providerId);
+    setStep(2); // move forward once provider is chosen
     setError("");
   };
 
@@ -152,6 +155,7 @@ export default function NewScanModal({
       setSelectedProvider("");
       setCredentials({ accessKey: "", secretKey: "", sessionToken: "" });
       setScanConfig({ scanName: "" });
+      setStep(1);
       onOpenChange(false);
 
       // Notify parent component
@@ -173,205 +177,194 @@ export default function NewScanModal({
       setCredentials({ accessKey: "", secretKey: "", sessionToken: "" });
       setScanConfig({ scanName: "" });
       setError("");
+      setStep(1);
       onOpenChange(false);
     }
   };
 
+  const isNextDisabled = useMemo(
+    () => !selectedProvider,
+    [selectedProvider]
+  );
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <Zap className="h-5 w-5" />
-            New Cloud Security Scan
+            New Scan
           </DialogTitle>
-          <DialogDescription>
-            Select a cloud provider and configure your credentials to start a
-            comprehensive security scan.
+          <DialogDescription className="text-xs">
+            {step === 1 ? "Select cloud provider" : "Enter credentials"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Cloud Provider Selection */}
-          <div>
-            <Label className="text-base font-medium">
-              Select Cloud Provider
-            </Label>
-            <div className="grid gap-3 mt-3">
-              {CloudProviders.map((provider) => (
-                <Card
-                  key={provider.id}
-                  className={`cursor-pointer transition-all ${
-                    selectedProvider === provider.id
-                      ? "ring-2 ring-primary border-primary"
-                      : provider.available
-                      ? "hover:border-primary/50"
-                      : "opacity-60 cursor-not-allowed"
-                  }`}
-                  onClick={() =>
-                    provider.available && handleProviderSelect(provider.id)
-                  }
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{provider.icon}</span>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{provider.name}</h3>
-                            {provider.available ? (
-                              <Badge variant="default">Available</Badge>
-                            ) : (
-                              <Badge variant="secondary">Coming Soon</Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {provider.description}
-                          </p>
-                        </div>
-                      </div>
-                      {selectedProvider === provider.id && (
-                        <div className="h-4 w-4 rounded-full bg-primary" />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+        <div className="space-y-3">
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 text-xs">
+            {["Provider", "Credentials"].map((label, idx) => {
+              const current = idx + 1;
+              const active = step === current;
+              const done = step > current;
+              return (
+                <div key={label} className="flex items-center gap-1.5">
+                  <div
+                    className={`h-6 w-6 rounded-full flex items-center justify-center border text-xs ${
+                      done
+                        ? "bg-primary text-white border-primary"
+                        : active
+                        ? "border-primary text-primary"
+                        : "border-muted-foreground/40 text-muted-foreground"
+                    }`}
+                  >
+                    {done ? <CheckCircle className="h-3 w-3" /> : current}
+                  </div>
+                  <span className="hidden sm:inline text-xs">{label}</span>
+                  {idx === 0 && <div className="w-3 h-px bg-muted hidden sm:block" />}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Scan Configuration */}
-          {selectedProvider && (
-            <div className="space-y-4">
-              <Separator />
-
-              <div>
-                <Label className="text-base font-medium">
-                  Scan Configuration
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Configure your scan settings and preferences.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="scanName">Scan Name (Optional)</Label>
-                <Input
-                  id="scanName"
-                  placeholder="e.g., Production AWS Security Audit"
-                  value={scanConfig.scanName}
-                  onChange={(e) =>
-                    handleScanConfigChange("scanName", e.target.value)
-                  }
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Give your scan a meaningful name to help identify it later
-                </p>
+          {/* Step 1: Provider selection */}
+          {step === 1 && (
+            <div className="space-y-2">
+              <div className="grid gap-2">
+                {CloudProviders.map((provider) => (
+                  <Card
+                    key={provider.id}
+                    className={`cursor-pointer transition-all ${
+                      selectedProvider === provider.id
+                        ? "ring-2 ring-primary border-primary"
+                        : provider.available
+                        ? "hover:border-primary/50"
+                        : "opacity-60 cursor-not-allowed"
+                    }`}
+                    onClick={() =>
+                      provider.available && handleProviderSelect(provider.id)
+                    }
+                  >
+                    <CardContent className="p-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CloudProviderLogo provider={provider.provider} size="sm" />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h3 className="text-sm font-medium">{provider.name}</h3>
+                              {!provider.available && (
+                                <Badge variant="secondary" className="text-xs">Soon</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {selectedProvider === provider.id && (
+                          <div className="h-3 w-3 rounded-full bg-primary" />
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
           )}
 
-          {/* AWS Credentials Form */}
-          {selectedProvider === "aws" && (
-            <div className="space-y-4">
-              <Separator />
-
+          {/* Step 2: Credentials & details */}
+          {step === 2 && (
+            <div className="space-y-3">
               <div>
-                <Label className="text-base font-medium flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  AWS Credentials
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Your credentials are encrypted and securely transmitted to our
-                  servers.
-                </p>
+                <Label htmlFor="scanName" className="text-xs">Scan Name (Optional)</Label>
+                <Input
+                  id="scanName"
+                  placeholder="e.g., Prod Audit"
+                  value={scanConfig.scanName}
+                  onChange={(e) => handleScanConfigChange("scanName", e.target.value)}
+                  className="h-8 text-sm"
+                />
               </div>
 
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Ensure your AWS credentials have the necessary permissions for
-                  security scanning. We recommend using temporary credentials
-                  with minimal required permissions.
-                </AlertDescription>
-              </Alert>
+              {selectedProvider === "aws" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    <Lock className="h-3 w-3" />
+                    <Label className="text-xs font-medium">AWS Credentials</Label>
+                  </div>
 
-              <div className="grid gap-4">
-                <div>
-                  <Label htmlFor="accessKey">AWS Access Key ID *</Label>
-                  <Input
-                    id="accessKey"
-                    placeholder="AKIAIOSFODNN7EXAMPLE"
-                    value={credentials.accessKey}
-                    onChange={(e) =>
-                      handleCredentialChange("accessKey", e.target.value)
-                    }
-                    className="font-mono"
-                  />
-                </div>
+                  <Alert className="p-2.5">
+                    <AlertTriangle className="h-3 w-3" />
+                    <AlertDescription className="text-xs mt-1">
+                      Use temporary, least-privilege credentials.
+                    </AlertDescription>
+                  </Alert>
 
-                <div>
-                  <Label htmlFor="secretKey">AWS Secret Access Key *</Label>
-                  <div className="relative">
-                    <Input
-                      id="secretKey"
-                      type={showSecrets.secretKey ? "text" : "password"}
-                      placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-                      value={credentials.secretKey}
-                      onChange={(e) =>
-                        handleCredentialChange("secretKey", e.target.value)
-                      }
-                      className="font-mono pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => toggleSecretVisibility("secretKey")}
-                    >
-                      {showSecrets.secretKey ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
+                  <div className="grid gap-2.5">
+                    <div>
+                      <Label htmlFor="accessKey" className="text-xs">Access Key *</Label>
+                      <Input
+                        id="accessKey"
+                        placeholder="AKIA..."
+                        value={credentials.accessKey}
+                        onChange={(e) => handleCredentialChange("accessKey", e.target.value)}
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="secretKey" className="text-xs">Secret Key *</Label>
+                      <div className="relative">
+                        <Input
+                          id="secretKey"
+                          type={showSecrets.secretKey ? "text" : "password"}
+                          placeholder="••••••••••••••••"
+                          value={credentials.secretKey}
+                          onChange={(e) => handleCredentialChange("secretKey", e.target.value)}
+                          className="h-8 text-xs font-mono pr-8"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-2"
+                          onClick={() => toggleSecretVisibility("secretKey")}
+                        >
+                          {showSecrets.secretKey ? (
+                            <EyeOff className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="sessionToken" className="text-xs">Session Token (Optional)</Label>
+                      <div className="relative">
+                        <Input
+                          id="sessionToken"
+                          type={showSecrets.sessionToken ? "text" : "password"}
+                          placeholder="••••••••••••••••"
+                          value={credentials.sessionToken}
+                          onChange={(e) => handleCredentialChange("sessionToken", e.target.value)}
+                          className="h-8 text-xs font-mono pr-8"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-2"
+                          onClick={() => toggleSecretVisibility("sessionToken")}
+                        >
+                          {showSecrets.sessionToken ? (
+                            <EyeOff className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div>
-                  <Label htmlFor="sessionToken">Session Token (Optional)</Label>
-                  <div className="relative">
-                    <Input
-                      id="sessionToken"
-                      type={showSecrets.sessionToken ? "text" : "password"}
-                      placeholder="Temporary session token for assumed roles"
-                      value={credentials.sessionToken}
-                      onChange={(e) =>
-                        handleCredentialChange("sessionToken", e.target.value)
-                      }
-                      className="font-mono pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => toggleSecretVisibility("sessionToken")}
-                    >
-                      {showSecrets.sessionToken ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Required only when using temporary credentials or assumed
-                    roles
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -384,29 +377,47 @@ export default function NewScanModal({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+        <DialogFooter className="gap-2 pt-2">
+          {step === 2 && (
+            <Button
+              variant="outline"
+              onClick={() => setStep(1)}
+              disabled={isLoading}
+              size="sm"
+            >
+              Back
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleClose} disabled={isLoading} size="sm">
             Cancel
           </Button>
-          <Button
-            onClick={handleStartScan}
-            disabled={
-              !selectedProvider || selectedProvider !== "aws" || isLoading
-            }
-            className="min-w-[120px]"
-          >
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Starting...
-              </>
-            ) : (
-              <>
-                <Cloud className="h-4 w-4 mr-2" />
-                Start Scan
-              </>
-            )}
-          </Button>
+          {step === 1 ? (
+            <Button
+              onClick={() => setStep(2)}
+              disabled={isNextDisabled || isLoading}
+              size="sm"
+            >
+              Next
+            </Button>
+          ) : (
+            <Button
+              onClick={handleStartScan}
+              disabled={selectedProvider !== "aws" || isLoading}
+              size="sm"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1.5" />
+                  Starting
+                </>
+              ) : (
+                <>
+                  <Cloud className="h-3 w-3 mr-1.5" />
+                  Start
+                </>
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,0 +1,105 @@
+import React from "react";
+
+interface CloudLensLogoProps {
+  size?: "sm" | "md" | "lg" | "xl";
+  variant?: "full" | "icon";
+  className?: string;
+}
+
+export function CloudLensLogo({ 
+  size = "md", 
+  variant = "full",
+  className = "" 
+}: CloudLensLogoProps) {
+  const sizeClasses = {
+    sm: "h-6",
+    md: "h-8",
+    lg: "h-12",
+    xl: "h-16"
+  };
+
+  const iconSizes = {
+    sm: "h-6 w-6",
+    md: "h-8 w-8",
+    lg: "h-12 w-12",
+    xl: "h-16 w-16"
+  };
+
+  if (variant === "icon") {
+    return (
+      <svg 
+        viewBox="0 0 100 100" 
+        className={`${iconSizes[size]} ${className}`}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Cloud shape with gradient */}
+        <defs>
+          <linearGradient id="cloudGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "#3b82f6", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#1d4ed8", stopOpacity: 1 }} />
+          </linearGradient>
+        </defs>
+        
+        {/* Cloud */}
+        <path 
+          d="M75 45c0-2.5-0.5-5-1.5-7.2-3-6.5-9.5-11-17-11-7 0-13 3.8-16 9.5-1.5-0.8-3.2-1.3-5-1.3-6.1 0-11 4.9-11 11 0 1 0.1 2 0.4 2.9C20.2 50.5 17 55 17 60c0 8.3 6.7 15 15 15h43c8.3 0 15-6.7 15-15 0-7.5-5.5-13.7-12.7-14.8C76.5 45 75.8 45 75 45z"
+          fill="url(#cloudGradient)"
+        />
+        
+        {/* Lens/Eye */}
+        <ellipse cx="50" cy="55" rx="18" ry="12" fill="white" fillOpacity="0.9"/>
+        <circle cx="50" cy="55" r="8" fill="#1e40af"/>
+        <circle cx="52" cy="53" r="3" fill="white"/>
+        
+        {/* Scan lines */}
+        <line x1="30" y1="55" x2="38" y2="55" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="62" y1="55" x2="70" y2="55" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="50" y1="42" x2="50" y2="48" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="50" y1="62" x2="50" y2="68" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      <svg 
+        viewBox="0 0 100 100" 
+        className={iconSizes[size]}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="cloudGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: "#3b82f6", stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: "#1d4ed8", stopOpacity: 1 }} />
+          </linearGradient>
+        </defs>
+        
+        <path 
+          d="M75 45c0-2.5-0.5-5-1.5-7.2-3-6.5-9.5-11-17-11-7 0-13 3.8-16 9.5-1.5-0.8-3.2-1.3-5-1.3-6.1 0-11 4.9-11 11 0 1 0.1 2 0.4 2.9C20.2 50.5 17 55 17 60c0 8.3 6.7 15 15 15h43c8.3 0 15-6.7 15-15 0-7.5-5.5-13.7-12.7-14.8C76.5 45 75.8 45 75 45z"
+          fill="url(#cloudGradient)"
+        />
+        
+        <ellipse cx="50" cy="55" rx="18" ry="12" fill="white" fillOpacity="0.9"/>
+        <circle cx="50" cy="55" r="8" fill="#1e40af"/>
+        <circle cx="52" cy="53" r="3" fill="white"/>
+        
+        <line x1="30" y1="55" x2="38" y2="55" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="62" y1="55" x2="70" y2="55" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="50" y1="42" x2="50" y2="48" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="50" y1="62" x2="50" y2="68" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round"/>
+      </svg>
+      
+      <span className={`font-bold ${
+        size === 'sm' ? 'text-lg' : 
+        size === 'md' ? 'text-xl' : 
+        size === 'lg' ? 'text-2xl' : 
+        'text-3xl'
+      }`}>
+        <span className="text-blue-600">Cloud</span>
+        <span className="text-blue-800">Lens</span>
+      </span>
+    </div>
+  );
+}

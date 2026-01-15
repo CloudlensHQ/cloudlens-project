@@ -18,6 +18,7 @@ import {
   Unlock,
   RotateCw,
   BarChart3,
+  ExternalLink,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +69,22 @@ const formatDate = (dateString: string) => {
   });
 };
 
+const getEC2ConsoleUrl = (region: string, instanceId: string) => {
+  return `https://console.aws.amazon.com/ec2/home?region=${region}#Instances:instanceId=${instanceId}`;
+};
+
+const getEBSConsoleUrl = (region: string, volumeId: string) => {
+  return `https://console.aws.amazon.com/ec2/home?region=${region}#Volumes:volumeId=${volumeId}`;
+};
+
+const getSecurityGroupConsoleUrl = (region: string, groupId: string) => {
+  return `https://console.aws.amazon.com/ec2/home?region=${region}#SecurityGroups:groupId=${groupId}`;
+};
+
+const getS3ConsoleUrl = (bucketName: string) => {
+  return `https://s3.console.aws.amazon.com/s3/buckets/${bucketName}`;
+};
+
 const SecurityGroupsResults = ({
   data,
   region,
@@ -92,71 +109,93 @@ const SecurityGroupsResults = ({
         <Card key={sg.GroupId}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Shield className="h-5 w-5" />
                   {sg.GroupName}
                 </CardTitle>
-                <CardDescription>{sg.Description}</CardDescription>
+                <CardDescription className="font-mono text-xs mt-1">
+                  Group ID: {sg.GroupId}
+                </CardDescription>
+                <CardDescription className="font-mono text-xs">
+                  ARN: arn:aws:ec2:{region}:123456789012:security-group/{sg.GroupId}
+                </CardDescription>
+                <CardDescription className="mt-1">{sg.Description}</CardDescription>
               </div>
-              <div className="flex gap-2">
-                <Badge variant="outline">{sg.GroupId}</Badge>
-                {sg.RiskyInboundRules.length > 0 && (
-                  <Badge variant="destructive">
-                    {sg.RiskyInboundRules.length} Risky Rules
+              <div className="flex flex-col gap-2">
+                <a
+                  href={getSecurityGroupConsoleUrl(region, sg.GroupId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg hover:bg-blue-100 transition-colors"
+                  title="Open in AWS Console"
+                >
+                  <ExternalLink className="h-5 w-5 text-blue-600" />
+                </a>
+                {sg.RiskyInboundRules && sg.RiskyInboundRules.length > 0 && (
+                  <Badge variant="destructive" className="h-fit">
+                    ⚠️ {sg.RiskyInboundRules.length} Risky Rules
                   </Badge>
                 )}
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">
-                  {sg.InboundRuleCount}
-                </p>
-                <p className="text-sm text-muted-foreground">Inbound Rules</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-4 gap-4 p-3 bg-muted rounded-lg">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-600">
+                    {sg.InboundRuleCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Inbound Rules</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    {sg.OutboundRuleCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Outbound Rules</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-mono">{sg.VpcId}</p>
+                  <p className="text-xs text-muted-foreground">VPC ID</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {sg.OutboundRuleCount}
-                </p>
-                <p className="text-sm text-muted-foreground">Outbound Rules</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">VPC</p>
-                <p className="font-mono text-sm">{sg.VpcId}</p>
-              </div>
-            </div>
 
-            {sg.RiskyInboundRules.length > 0 && (
-              <div className="mt-4">
-                <h4 className="font-semibold text-destructive mb-2 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  Risky Inbound Rules
-                </h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Source</TableHead>
-                      <TableHead>Protocol</TableHead>
-                      <TableHead>Port Range</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sg.RiskyInboundRules.map((rule, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-mono">
-                          {rule.source}
-                        </TableCell>
-                        <TableCell>{rule.protocol.toUpperCase()}</TableCell>
-                        <TableCell>{rule.port_range}</TableCell>
+              {sg.RiskyInboundRules && sg.RiskyInboundRules.length > 0 && (
+                <div className="border border-red-200 rounded-lg p-3 bg-red-50">
+                  <h4 className="font-semibold text-red-600 mb-3 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    ⚠️ Risky Inbound Rules Detected
+                  </h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-red-200">
+                        <TableHead className="text-xs">Source</TableHead>
+                        <TableHead className="text-xs">Protocol</TableHead>
+                        <TableHead className="text-xs">Port Range</TableHead>
+                        <TableHead className="text-xs">Risk</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                    </TableHeader>
+                    <TableBody>
+                      {sg.RiskyInboundRules.map((rule, index) => (
+                        <TableRow key={index} className="border-red-100">
+                          <TableCell className="font-mono text-xs">
+                            {rule.source}
+                          </TableCell>
+                          <TableCell className="text-xs">{rule.protocol.toUpperCase()}</TableCell>
+                          <TableCell className="text-xs">{rule.port_range}</TableCell>
+                          <TableCell>
+                            <Badge variant="destructive" className="text-xs">
+                              {rule.source === "0.0.0.0/0" ? "Public Access" : "Open Range"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       ))}
@@ -186,16 +225,28 @@ const EC2Results = ({
         <Card key={instance.InstanceId}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Server className="h-5 w-5" />
                   {instance.InstanceName}
                 </CardTitle>
-                <CardDescription className="font-mono">
-                  {instance.InstanceId}
+                <CardDescription className="font-mono text-xs mt-1">
+                  Instance ID: {instance.InstanceId}
+                </CardDescription>
+                <CardDescription className="font-mono text-xs">
+                  ARN: arn:aws:ec2:{region}:123456789012:instance/{instance.InstanceId}
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
+                <a
+                  href={getEC2ConsoleUrl(region, instance.InstanceId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg hover:bg-blue-100 transition-colors"
+                  title="Open in AWS Console"
+                >
+                  <ExternalLink className="h-5 w-5 text-blue-600" />
+                </a>
                 <Badge
                   variant={
                     instance.State === "running" ? "default" : "secondary"
@@ -216,25 +267,31 @@ const EC2Results = ({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Public IP</p>
-                <p className="font-mono">{instance.PublicIpAddress}</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">State</p>
+                  <p className="font-semibold">{instance.State}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Public IP</p>
+                  <p className="font-mono text-sm">{instance.PublicIpAddress || "None"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Private IP</p>
+                  <p className="font-mono text-sm">{instance.PrivateIpAddress}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Private IP</p>
-                <p className="font-mono">{instance.PrivateIpAddress}</p>
-              </div>
+
+              {instance.IMDSVersion === "IMDSv1" && (
+                <Alert className="mt-4 border-red-200 bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    ⚠️ This instance is using IMDSv1, which is less secure. Consider upgrading to IMDSv2 to prevent credential theft.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
-            {instance.IMDSVersion === "IMDSv1" && (
-              <Alert className="mt-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  This instance is using IMDSv1, which is less secure. Consider
-                  upgrading to IMDSv2.
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
       ))}
@@ -264,16 +321,28 @@ const EBSResults = ({
         <Card key={volume.VolumeId}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <HardDrive className="h-5 w-5" />
                   {volume.VolumeName}
                 </CardTitle>
-                <CardDescription className="font-mono">
-                  {volume.VolumeId}
+                <CardDescription className="font-mono text-xs mt-1">
+                  Volume ID: {volume.VolumeId}
+                </CardDescription>
+                <CardDescription className="font-mono text-xs">
+                  ARN: arn:aws:ec2:{region}:123456789012:volume/{volume.VolumeId}
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
+                <a
+                  href={getEBSConsoleUrl(region, volume.VolumeId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg hover:bg-blue-100 transition-colors"
+                  title="Open in AWS Console"
+                >
+                  <ExternalLink className="h-5 w-5 text-blue-600" />
+                </a>
                 <Badge
                   variant={volume.State === "in-use" ? "default" : "secondary"}
                 >
@@ -296,31 +365,38 @@ const EBSResults = ({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Size</p>
-                <p className="font-semibold">{volume.Size} GB</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Size</p>
+                  <p className="font-semibold">{volume.Size} GB</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">State</p>
+                  <p className="font-semibold">{volume.State}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Created</p>
+                  <p className="text-sm">{formatDate(volume.CreateTime)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Created</p>
-                <p className="text-sm">{formatDate(volume.CreateTime)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Attached To</p>
-                <p className="font-mono text-sm">
-                  {volume.AttachedInstanceId || "Not attached"}
-                </p>
-              </div>
+
+              {volume.AttachedInstanceId && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Attached Instance</p>
+                  <p className="font-mono text-sm">{volume.AttachedInstanceId}</p>
+                </div>
+              )}
+
+              {!volume.Encrypted && (
+                <Alert className="mt-4 border-red-200 bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    ⚠️ This EBS volume is not encrypted. Consider enabling encryption for better security and compliance.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
-            {!volume.Encrypted && (
-              <Alert className="mt-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  This EBS volume is not encrypted. Consider enabling encryption
-                  for better security.
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
       ))}
@@ -344,69 +420,84 @@ const S3Results = ({ data, region }: { data: S3Bucket[]; region: string }) => {
         <Card key={bucket.BucketName}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Database className="h-5 w-5" />
                   {bucket.BucketName}
                 </CardTitle>
-                <CardDescription className="flex items-center gap-2">
+                <CardDescription className="font-mono text-xs mt-1">
+                  ARN: arn:aws:s3:::{bucket.BucketName}
+                </CardDescription>
+                <CardDescription className="flex items-center gap-2 mt-1">
                   <MapPin className="h-3 w-3" />
-                  {bucket.Region}
+                  Region: {bucket.Region}
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
+                <a
+                  href={getS3ConsoleUrl(bucket.BucketName)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg hover:bg-blue-100 transition-colors"
+                  title="Open in AWS Console"
+                >
+                  <ExternalLink className="h-5 w-5 text-blue-600" />
+                </a>
                 <Badge
                   variant={bucket.EncryptionEnabled ? "default" : "destructive"}
                 >
-                  {bucket.EncryptionEnabled ? "Encrypted" : "Unencrypted"}
+                  {bucket.EncryptionEnabled ? "🔒 Encrypted" : "🔓 Unencrypted"}
                 </Badge>
                 <Badge
                   variant={bucket.VersioningEnabled ? "default" : "secondary"}
                 >
-                  {bucket.VersioningEnabled ? "Versioned" : "No Versioning"}
+                  {bucket.VersioningEnabled ? "✓ Versioned" : "No Versioning"}
                 </Badge>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Created</p>
-                <p className="text-sm">{formatDate(bucket.CreationDate)}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Created</p>
+                  <p className="text-sm">{formatDate(bucket.CreationDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Region</p>
+                  <p className="font-mono text-sm">{bucket.Region}</p>
+                </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold mb-2">
-                  Public Access Block Configuration
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2">
-                    {bucket.PublicAccessBlockConfiguration.BlockPublicAcls ? (
+                <p className="text-sm font-semibold mb-3">Public Access Configuration</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2 p-2 rounded border">
+                    {bucket.PublicAccessBlockConfiguration?.BlockPublicAcls ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <XCircle className="h-4 w-4 text-red-500" />
                     )}
                     <span className="text-sm">Block Public ACLs</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {bucket.PublicAccessBlockConfiguration.IgnorePublicAcls ? (
+                  <div className="flex items-center gap-2 p-2 rounded border">
+                    {bucket.PublicAccessBlockConfiguration?.IgnorePublicAcls ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <XCircle className="h-4 w-4 text-red-500" />
                     )}
                     <span className="text-sm">Ignore Public ACLs</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {bucket.PublicAccessBlockConfiguration.BlockPublicPolicy ? (
+                  <div className="flex items-center gap-2 p-2 rounded border">
+                    {bucket.PublicAccessBlockConfiguration?.BlockPublicPolicy ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <XCircle className="h-4 w-4 text-red-500" />
                     )}
                     <span className="text-sm">Block Public Policy</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {bucket.PublicAccessBlockConfiguration
-                      .RestrictPublicBuckets ? (
+                  <div className="flex items-center gap-2 p-2 rounded border">
+                    {bucket.PublicAccessBlockConfiguration?.RestrictPublicBuckets ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <XCircle className="h-4 w-4 text-red-500" />
@@ -416,16 +507,14 @@ const S3Results = ({ data, region }: { data: S3Bucket[]; region: string }) => {
                 </div>
               </div>
 
-              {(!bucket.PublicAccessBlockConfiguration.BlockPublicAcls ||
-                !bucket.PublicAccessBlockConfiguration.IgnorePublicAcls ||
-                !bucket.PublicAccessBlockConfiguration.BlockPublicPolicy ||
-                !bucket.PublicAccessBlockConfiguration
-                  .RestrictPublicBuckets) && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    This S3 bucket may allow public access. Review the public
-                    access block configuration.
+              {(!bucket.PublicAccessBlockConfiguration?.BlockPublicAcls ||
+                !bucket.PublicAccessBlockConfiguration?.IgnorePublicAcls ||
+                !bucket.PublicAccessBlockConfiguration?.BlockPublicPolicy ||
+                !bucket.PublicAccessBlockConfiguration?.RestrictPublicBuckets) && (
+                <Alert className="border-red-200 bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    ⚠️ This bucket has weak public access controls. Consider enabling all public access blocks for better security.
                   </AlertDescription>
                 </Alert>
               )}

@@ -29,7 +29,9 @@ export interface DashboardExportData {
 }
 
 // Helper function to create a chart and return as base64 image
-async function createChart(config: any): Promise<string> {
+async function createChart<TType extends ChartType>(
+    config: ChartConfiguration<TType, number[], string>
+): Promise<string> {
     return new Promise((resolve) => {
         // Create a temporary canvas
         const canvas = document.createElement('canvas');
@@ -56,14 +58,16 @@ async function createChart(config: any): Promise<string> {
 }
 
 // Create pie chart for service distribution
-async function createServiceDistributionChart(serviceMetrics: Array<{ serviceName: string, resourceCount: number }>): Promise<string> {
+async function createServiceDistributionChart(
+    serviceMetrics: Array<{ serviceName: string; resourceCount: number }>
+): Promise<string> {
     const colors = [
         '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
         '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'
     ];
 
-    const config: any = {
-        type: 'pie' as ChartType,
+    const config: ChartConfiguration<'pie', number[], string> = {
+        type: 'pie',
         data: {
             labels: serviceMetrics.map(m => m.serviceName.toUpperCase()),
             datasets: [{
@@ -97,9 +101,11 @@ async function createServiceDistributionChart(serviceMetrics: Array<{ serviceNam
 }
 
 // Create bar chart for regional distribution
-async function createRegionalDistributionChart(regionMetrics: Array<{ region: string, resourceCount: number }>): Promise<string> {
-    const config: any = {
-        type: 'bar' as ChartType,
+async function createRegionalDistributionChart(
+    regionMetrics: Array<{ region: string; resourceCount: number }>
+): Promise<string> {
+    const config: ChartConfiguration<'bar', number[], string> = {
+        type: 'bar',
         data: {
             labels: regionMetrics.map(m => m.region),
             datasets: [{
@@ -147,7 +153,7 @@ async function createSecurityScoreChart(score: number): Promise<string> {
     const remaining = 100 - score;
     const color = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444';
 
-    const config: any = {
+    const config: ChartConfiguration<'doughnut', number[], string> = {
         type: 'doughnut',
         data: {
             labels: ['Security Score', 'Remaining'],
@@ -196,8 +202,8 @@ async function createAlertsChart(alerts: Array<{ severity: string }>): Promise<s
     const data = labels.map(severity => severityCounts[severity]);
     const backgroundColors = labels.map(severity => colors[severity as keyof typeof colors]);
 
-    const config: any = {
-        type: 'bar' as ChartType,
+    const config: ChartConfiguration<'bar', number[], string> = {
+        type: 'bar',
         data: {
             labels: labels.map(l => l.toUpperCase()),
             datasets: [{

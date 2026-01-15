@@ -172,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initializeAuth();
-  }, [verifyCurrentUser]);
+  }, [verifyCurrentUser, transformUserData, clearAuthData]);
 
   // Store auth data in both localStorage and cookies
   const storeAuthData = (authData: any) => {
