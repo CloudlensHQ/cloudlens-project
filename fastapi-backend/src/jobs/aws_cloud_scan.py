@@ -5,13 +5,14 @@ from datetime import datetime
 import traceback
 from typing import Dict, List, Optional, Any
 from botocore.exceptions import ClientError, BotoCoreError
+from sqlalchemy.orm.attributes import flag_modified
 
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from dbschema.db_connector import get_db
-from dbschema.model import CloudScan, ServiceScanResult, Tenant
+from dbschema.model import CloudScan, ServiceScanResult, Tenant, Region
 
 # Configure basic print statements for Lambda logging
 def log_info(message):
@@ -408,8 +409,25 @@ def save_scan_results_to_db(tenant_id, scan_results, scan_id):
             
             # scan_id = cloud_scan.id
             
-            # Create service scan results
+            # Create service scan results and auto-populate regions table
             for region, region_results in scan_results.items():
+                # Auto-populate regions table if region doesn't exist
+                existing_region = db.query(Region).filter(
+                    Region.name == region,
+                    Region.cloud_provider == 'AWS'
+                ).first()
+                
+                if not existing_region:
+                    new_region = Region(
+                        id=uuid.uuid4(),
+                        name=region,
+                        cloud_provider='AWS',
+                        created_at=datetime.now(),
+                        updated_at=datetime.now()
+                    )
+                    db.add(new_region)
+                    log_info(f"Auto-created region record: {region} (AWS)")
+                
                 for service_name, service_data in region_results.items():
                     if service_name == 'region':
                         continue  # Skip the region name entry
@@ -500,9 +518,24 @@ def process_scan_request_v2(aws_access_key, aws_secret_key, aws_session_token, t
         
         # Filter out excluded regions if any
         regions = [r for r in all_regions if r not in excluded_regions]
+        total_regions = len(regions)
         
-        log_info(f"Starting inventory scan across {len(regions)} AWS regions" + 
+        log_info(f"Starting inventory scan across {total_regions} AWS regions" + 
                 (f" (excluding {len(excluded_regions)} regions)" if excluded_regions else ""))
+        
+        # Update total_regions in scan metadata
+        try:
+            with get_db() as db:
+                cloud_scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
+                if cloud_scan and cloud_scan.cloud_scan_metadata:
+                    metadata = cloud_scan.cloud_scan_metadata
+                    metadata['total_regions'] = total_regions
+                    cloud_scan.cloud_scan_metadata = metadata
+                    flag_modified(cloud_scan, 'cloud_scan_metadata')
+                    db.commit()
+                    log_info(f"Updated total_regions to {total_regions}")
+        except Exception as e:
+            log_error(f"Failed to update total regions: {str(e)}")
         
         # Add timeout handling for very large accounts
         scan_timeout = scan_options  # scan_options is the timeout in seconds
@@ -514,15 +547,47 @@ def process_scan_request_v2(aws_access_key, aws_secret_key, aws_session_token, t
             # Check if we're approaching timeout
             elapsed = (datetime.now() - start_time).total_seconds()
             if elapsed > scan_timeout - 60:  # Leave 1 minute buffer
-                log_info(f"Approaching timeout limit. Processed {i}/{len(regions)} regions.")
+                log_info(f"Approaching timeout limit. Processed {i}/{total_regions} regions.")
                 break
+            
+            # Update current region being scanned
+            try:
+                with get_db() as db:
+                    cloud_scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
+                    if cloud_scan and cloud_scan.cloud_scan_metadata:
+                        metadata = cloud_scan.cloud_scan_metadata
+                        metadata['current_region'] = region
+                        metadata['regions_completed'] = i
+                        metadata['progress_percentage'] = int((i / total_regions) * 100)
+                        cloud_scan.cloud_scan_metadata = metadata
+                        flag_modified(cloud_scan, 'cloud_scan_metadata')
+                        db.commit()
+                        log_info(f"Progress updated: {int((i / total_regions) * 100)}% - Region: {region}")
+            except Exception as e:
+                log_error(f"Failed to update progress: {str(e)}")
                 
-            log_info(f"Scanning region {i+1}/{len(regions)}: {region}")
+            log_info(f"Scanning region {i+1}/{total_regions}: {region} ({int((i / total_regions) * 100)}% complete)")
             result = scan_region(aws_access_key, aws_secret_key, region, aws_session_token)
             scan_results[result['region']] = result
         
         # Save results to database
         scan_id = save_scan_results_to_db(tenant_id, scan_results, scan_id)
+        
+        # Update final progress to 100%
+        try:
+            with get_db() as db:
+                cloud_scan = db.query(CloudScan).filter(CloudScan.id == uuid.UUID(scan_id)).first()
+                if cloud_scan and cloud_scan.cloud_scan_metadata:
+                    metadata = cloud_scan.cloud_scan_metadata
+                    metadata['progress_percentage'] = 100
+                    metadata['regions_completed'] = len(scan_results)
+                    metadata['current_region'] = None
+                    cloud_scan.cloud_scan_metadata = metadata
+                    flag_modified(cloud_scan, 'cloud_scan_metadata')
+                    db.commit()
+                    log_info(f"Final progress updated: 100% - {len(scan_results)} regions completed")
+        except Exception as e:
+            log_error(f"Failed to update final progress: {str(e)}")
         
         return {
             'statusCode': 200,
@@ -530,7 +595,7 @@ def process_scan_request_v2(aws_access_key, aws_secret_key, aws_session_token, t
                 'message': 'Full AWS inventory scan completed successfully',
                 'scan_id': str(scan_id),
                 'regions_scanned': len(scan_results),
-                'total_regions': len(regions),
+                'total_regions': total_regions,
                 'timestamp': datetime.now().isoformat()
             })
         }

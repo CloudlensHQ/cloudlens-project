@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { CloudLensLogo } from "@/components/CloudLensLogo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,7 @@ import {
   Search,
   User,
   LogOut,
+  KeyRound,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -45,6 +47,12 @@ const sidebarItems = [
     title: "Cloud Scans",
     href: "/scans",
     icon: Cloud,
+    badge: null,
+  },
+  {
+    title: "AWS Validator",
+    href: "/validator",
+    icon: KeyRound,
     badge: null,
   },
 ];
@@ -105,8 +113,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           href="/dashboard"
           className="flex items-center gap-2 font-semibold"
         >
-          <Cloud className="h-6 w-6" />
-          {!isCollapsed && <span>CloudLens</span>}
+          {isCollapsed ? (
+            <CloudLensLogo variant="icon" size="sm" />
+          ) : (
+            <CloudLensLogo size="sm" />
+          )}
         </Link>
       </div>
 

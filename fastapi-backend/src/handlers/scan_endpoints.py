@@ -202,7 +202,11 @@ async def aws_cloud_scan(
                     "scan_options": request.scan_options,
                     "initiated_by": str(context.user_id),
                     "scan_timestamp": datetime.now().isoformat(),
-                    "total_regions_scanned": 17
+                    "total_regions_scanned": 17,
+                    "progress_percentage": 0,
+                    "regions_completed": 0,
+                    "total_regions": 0,
+                    "current_region": None
                 }
             )
             db.add(cloud_scan)
@@ -848,4 +852,72 @@ async def get_scan(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving scan: {str(e)}"
+        )
+
+
+@api.delete("/scan/{scan_id}")
+async def delete_scan(
+    scan_id: str,
+    context: TenantContext = Depends(get_current_context),
+    db: Any = Depends(get_db_session)
+):
+    """Delete a scan and its associated service results for the current tenant."""
+    logger.info(
+        "Delete scan request received",
+        extra={
+            "scan_id": scan_id,
+            "tenant_id": str(context.tenant_id),
+            "user_id": str(context.user_id)
+        }
+    )
+
+    try:
+        scan = db.query(CloudScan).filter(
+            CloudScan.id == uuid.UUID(scan_id),
+            CloudScan.tenant_id == context.tenant_id
+        ).first()
+
+        if not scan:
+            logger.warning(
+                "Scan not found or access denied",
+                extra={
+                    "scan_id": scan_id,
+                    "tenant_id": str(context.tenant_id)
+                }
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Scan not found"
+            )
+
+        db.delete(scan)
+        db.commit()
+
+        logger.info(
+            "Scan deleted successfully",
+            extra={
+                "scan_id": scan_id,
+                "tenant_id": str(context.tenant_id)
+            }
+        )
+
+        return {
+            "message": "Scan deleted successfully",
+            "scan_id": scan_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error deleting scan",
+            extra={
+                "error": str(e),
+                "scan_id": scan_id,
+                "tenant_id": str(context.tenant_id)
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting scan: {str(e)}"
         )

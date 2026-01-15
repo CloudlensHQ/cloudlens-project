@@ -20,9 +20,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CloudLens - AWS Security Dashboard",
+  title: "CloudLens - Cloud Security Dashboard",
   description:
-    "Comprehensive AWS cloud security scanning and monitoring platform",
+    "Comprehensive multi-cloud security scanning and monitoring platform",
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({

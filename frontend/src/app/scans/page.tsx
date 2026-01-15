@@ -8,15 +8,19 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  Loader2,
   MapPin,
   MoreHorizontal,
   Plus,
   RefreshCw,
   Server,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CloudProviderLogo } from "@/components/CloudProviderLogo";
 import {
   Card,
   CardContent,
@@ -32,6 +36,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -49,7 +63,9 @@ import { useScanDetailsWithRefresh } from "@/hooks/queries/useScanDetails";
 import ScanServiceResults from "@/components/ScanServiceResults";
 import RegionsCards from "@/components/RegionsCards";
 import NewScanModal from "@/components/NewScanModal";
+import { ScanProgress } from "@/components/ScanProgress";
 import { Region, useRegions } from "@/context/regions-context";
+import { toast } from "@/hooks/use-toast";
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -99,6 +115,8 @@ export default function ScansPage() {
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [showScanDetails, setShowScanDetails] = useState(false);
   const [showNewScanModal, setShowNewScanModal] = useState(false);
+  const [scanPendingDeletion, setScanPendingDeletion] = useState<Scan | null>(null);
+  const [isDeletingScan, setIsDeletingScan] = useState(false);
 
   const {
     data: scans = [],
@@ -113,6 +131,19 @@ export default function ScansPage() {
     error: scanDetailsError,
     refresh: refreshScanDetails,
   } = useScanDetailsWithRefresh(selectedScan?.scan_id || null);
+
+  // Auto-refresh scans list if there are any IN_PROGRESS scans
+  useEffect(() => {
+    const hasInProgressScans = scans.some(scan => scan.status === "IN_PROGRESS");
+    
+    if (hasInProgressScans) {
+      const intervalId = setInterval(() => {
+        refresh();
+      }, 5000); // Refresh every 5 seconds
+
+      return () => clearInterval(intervalId);
+    }
+  }, [scans, refresh]);
 
   // Initialize state from URL parameters
   useEffect(() => {
@@ -240,10 +271,21 @@ export default function ScansPage() {
       ),
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
+        const metadata = row.original.metadata;
+        const progress = metadata?.progress_percentage || 0;
+        const currentRegion = metadata?.current_region;
+        
         return (
           <div className="flex items-center gap-2">
             {getStatusIcon(status)}
-            <Badge variant={getStatusVariant(status)}>{status}</Badge>
+            {status === "IN_PROGRESS" ? (
+              <Badge variant="secondary" className="gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                {progress}% IN_PROGRESS
+              </Badge>
+            ) : (
+              <Badge variant={getStatusVariant(status)}>{status}</Badge>
+            )}
           </div>
         );
       },
@@ -260,9 +302,11 @@ export default function ScansPage() {
         </Button>
       ),
       cell: ({ row }) => (
-        <Badge variant="outline" className="font-mono">
-          {row.getValue("cloud_provider")}
-        </Badge>
+        <CloudProviderLogo 
+          provider={row.getValue("cloud_provider")} 
+          size="sm" 
+          showLabel={true}
+        />
       ),
     },
     {
@@ -343,6 +387,14 @@ export default function ScansPage() {
                 View scan details
               </DropdownMenuItem>
               <DropdownMenuItem>Download report</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setScanPendingDeletion(scan)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete scan
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -413,6 +465,51 @@ export default function ScansPage() {
     refresh();
   };
 
+  const handleDeleteScan = async () => {
+    if (!scanPendingDeletion) return;
+
+    setIsDeletingScan(true);
+
+    try {
+      const response = await fetch(`/api/scans/${scanPendingDeletion.scan_id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${
+            localStorage.getItem("cloudlens_access_token") || ""
+          }`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || errorData.details || "Failed to delete scan"
+        );
+      }
+
+      toast({
+        title: "Scan deleted",
+        description: `${scanPendingDeletion.name || "Scan"} has been removed.`,
+      });
+
+      if (selectedScan?.scan_id === scanPendingDeletion.scan_id) {
+        handleBackToScans();
+      }
+
+      await refresh();
+    } catch (err) {
+      toast({
+        title: "Delete failed",
+        description:
+          err instanceof Error ? err.message : "Unable to delete the scan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingScan(false);
+      setScanPendingDeletion(null);
+    }
+  };
+
   const toolbar = (
     <div className="flex items-center gap-2">
       <Button onClick={handleNewScanClick}>
@@ -420,6 +517,47 @@ export default function ScansPage() {
         New Scan
       </Button>
     </div>
+  );
+
+  const deleteDialog = (
+    <AlertDialog
+      open={!!scanPendingDeletion}
+      onOpenChange={(open) => {
+        if (!open && !isDeletingScan) {
+          setScanPendingDeletion(null);
+        }
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            Delete scan?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This will remove {scanPendingDeletion?.name || "this scan"} and all
+            related results. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeletingScan}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-white hover:bg-destructive/90"
+            disabled={isDeletingScan}
+            onClick={handleDeleteScan}
+          >
+            {isDeletingScan ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Deleting...
+              </span>
+            ) : (
+              "Delete scan"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 
   if (error) {
@@ -511,8 +649,7 @@ export default function ScansPage() {
                 {scanDetails.name}
               </h2>
               <p className="text-muted-foreground">
-                Detailed scan results for {scanDetails.cloud_provider}{" "}
-                infrastructure
+              Detailed scan results for infrastructure
               </p>
             </div>
             <div className="flex gap-2">
@@ -523,7 +660,7 @@ export default function ScansPage() {
               >
                 {scanDetails.status}
               </Badge>
-              <Badge variant="outline">{scanDetails.cloud_provider}</Badge>
+              <CloudProviderLogo provider={scanDetails.cloud_provider} size="sm" showLabel={true} />
             </div>
           </div>
 
@@ -588,6 +725,16 @@ export default function ScansPage() {
             </Card>
           </div>
 
+          {scanDetails.status === "IN_PROGRESS" && (
+            <ScanProgress
+              scanId={scanDetails.scan_id}
+              onComplete={() => {
+                refreshScanDetails();
+                refresh();
+              }}
+            />
+          )}
+
           <ScanServiceResults
             serviceScanResults={scanDetails.service_scan_results}
             cloudProvider={scanDetails.cloud_provider}
@@ -624,7 +771,7 @@ export default function ScansPage() {
           </div>
           <div className="flex gap-2">
             <Badge variant="outline">{selectedRegion.name}</Badge>
-            <Badge variant="outline">{scanDetails.cloud_provider}</Badge>
+            <CloudProviderLogo provider={scanDetails.cloud_provider} size="sm" showLabel={true} />
             <Badge
               variant={
                 scanDetails.status === "COMPLETED" ? "default" : "secondary"
@@ -825,6 +972,7 @@ export default function ScansPage() {
         onOpenChange={setShowNewScanModal}
         onScanCreated={handleScanCreated}
       />
+      {deleteDialog}
     </div>
   );
 }
